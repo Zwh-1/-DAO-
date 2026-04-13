@@ -1,0 +1,39 @@
+{
+  "name": "@trustaid/wallet-sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "validate:node": "tsx examples/node-demo.mjs",
+    "migrate:extension": "node tools/migrate-extension-storage.mjs",
+    "check": "npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {
+    "ethers": "^6.16.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "tsx": "^4.20.6",
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.8"
+  }
+}

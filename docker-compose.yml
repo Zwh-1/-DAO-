@@ -1,0 +1,96 @@
+version: "3.9"
+
+# TrustAid 开发环境基础设施
+# 启动：docker compose up -d
+# 停止：docker compose down
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: trustaid-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trustaid
+      POSTGRES_PASSWORD: trustaid_dev_pw
+      POSTGRES_DB: trustaid_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # 自动执行迁移脚本（按文件名排序）
+      - ./backend/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trustaid -d trustaid_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── IPFS 节点（Kubo） ─────────────────────────────────────────────────────
+  ipfs:
+    image: ipfs/kubo:v0.27.0
+    container_name: trustaid-ipfs
+    restart: unless-stopped
+    ports:
+      - "4001:4001"    # swarm（P2P）
+      - "5001:5001"    # API
+      - "8080:8080"    # Gateway
+    volumes:
+      - ipfsdata:/data/ipfs
+    environment:
+      IPFS_PROFILE: server
+    healthcheck:
+      test: ["CMD-SHELL", "ipfs id || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+
+  # ── 后端 API ──────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trustaid-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3010
+      DATABASE_URL: postgresql://trustaid:trustaid_dev_pw@postgres:5432/trustaid_db
+      JWT_SECRET: change-me-in-production
+      ADMIN_TOKEN: change-me-in-production
+      BYPASS_AUTH: "0"
+      # 可选：填入 DeepSeek / OpenAI API Key 以启用真实 AI 客服
+      DEEPSEEK_API_KEY: ""
+      OPENAI_API_KEY: ""
+    ports:
+      - "3010:3010"
+    volumes:
+      - ./backend/src:/app/src:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3010/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── 前端 (Next.js) ────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: trustaid-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:3010
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  ipfsdata:

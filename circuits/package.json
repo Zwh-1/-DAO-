@@ -1,0 +1,42 @@
+{
+  "name": "trustaid-circuits",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile": "node scripts/compile-circuit.mjs identity_commitment",
+    "compile:all": "node scripts/compile-all.mjs",
+    "compile:all:wasm": "node scripts/compile-all.mjs --with-wasm",
+    "compile:circuit": "node scripts/compile-circuit.mjs",
+    "compile:circuit:wasm": "node scripts/compile-circuit.mjs --with-wasm",
+    "ptau:generate": "node scripts/generate-ptau-local.mjs",
+    "zk:setup": "node scripts/zk-setup.mjs",
+    "zk:setup:all": "node scripts/zk-setup-all.mjs",
+    "zk:setup:all:fast": "node scripts/zk-setup-all-fast.mjs",
+    "zk:setup:circuit": "node scripts/zk-setup.mjs",
+    "zk:setup:fast": "node scripts/zk-setup-fast.mjs",
+    "zk:setup:fast:all": "node scripts/zk-setup-all-fast.mjs",
+    "zk:export": "node scripts/zk-export-verifier.mjs",
+    "zk:export:all": "node scripts/zk-export-verifier.mjs all",
+    "zk:export:circuit": "node scripts/zk-export-verifier.mjs",
+    "zk:full": "npm run zk:setup && npm run zk:export",
+    "clean": "node scripts/clean.mjs",
+    "clean:zkey": "node scripts/clean.mjs zkey",
+    "clean:build": "node scripts/clean.mjs build",
+    "clean:all": "node scripts/clean.mjs all",
+    "info": "node scripts/info.mjs",
+    "test": "node --experimental-vm-modules node_modules/mocha/bin/mocha.js test/circuits.test.js",
+    "test:circom": "cross-env RUN_CIRCOM_TESTS=1 node --experimental-vm-modules node_modules/mocha/bin/mocha.js test/circuits.test.js"
+  },
+  "devDependencies": {
+    "chai": "^4.5.0",
+    "circom_tester": "^0.0.20",
+    "circom2": "^0.2.22",
+    "circomlib": "^2.0.5",
+    "cross-env": "^7.0.3",
+    "mocha": "^10.7.3"
+  },
+  "dependencies": {
+    "snarkjs": "^0.7.6"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "name": "trustaid-platform",
+  "version": "0.1.0",
+  "description": "基于零知识证明与 DAO 治理的去中心化互助平台",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scan": "node scripts/security-scan.mjs",
+    "phase9:scan": "node scripts/security-scan.mjs",
+    "test:api": "node scripts/integration-test.mjs",
+    "test:contracts": "cd contracts && npx hardhat test",
+    "test:circuits": "cd circuits && npm test",
+    "test:circuits:full": "cd circuits && cross-env RUN_CIRCOM_TESTS=1 npm test",
+    "test:all": "npm run test:contracts && npm run test:circuits",
+    "start:backend": "cd backend && npm run start",
+    "start:frontend": "cd frontend && npm run build && npm run start",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:backend:start": "cd backend && npm run start",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:frontend:start": "cd frontend && npm run start",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "compile": "cd contracts && npx hardhat compile",
+    "compile:circuits": "cd circuits && npm run compile:all",
+    "compile:circuits:wasm": "cd circuits && npm run compile:all:wasm",
+    "compile:all": "npm run compile && npm run compile:circuits",
+    "zk:setup": "cd circuits && npm run zk:setup",
+    "zk:setup:all": "cd circuits && npm run zk:setup:all",
+    "zk:export": "cd circuits && npm run zk:export",
+    "zk:export:all": "cd circuits && npm run zk:export:all",
+    "zk:full": "cd circuits && npm run zk:full",
+    "zk:prove": "cd circuits && node scripts/zk-prove.mjs",
+    "zk:verify": "cd circuits && node scripts/zk-verify.mjs",
+    "deploy": "cd contracts && npx hardhat run scripts/deploy.mjs",
+    "deploy:local": "cd contracts && npx hardhat run scripts/deploy.mjs --network local",
+    "deploy:testnet": "cd contracts && npx hardhat run scripts/deploy.mjs --network testnet",
+    "clean": "npm run clean:circuits && npm run clean:contracts",
+    "clean:circuits": "cd circuits && node scripts/clean.mjs",
+    "clean:contracts": "cd contracts && npx hardhat clean",
+    "info:circuits": "cd circuits && node scripts/info.mjs",
+    "docs": "npx marked README.md -o docs/output.html"
+  },
+  "keywords": [
+    "zero-knowledge-proof",
+    "zkp",
+    "dao",
+    "privacy",
+    "blockchain",
+    "web3",
+    "circom",
+    "solidity"
+  ],
+  "author": "TrustAID Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "ethers": "^6.16.0"
+  }
+}

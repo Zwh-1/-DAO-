@@ -1,0 +1,48 @@
+name: wallet-sdk-ci
+
+on:
+  push:
+    paths:
+      - "wallet-sdk/**"
+      - "frontend/**"
+      - ".github/workflows/wallet-sdk-ci.yml"
+  pull_request:
+    paths:
+      - "wallet-sdk/**"
+      - "frontend/**"
+
+jobs:
+  wallet-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install wallet-sdk deps
+        run: npm install
+        working-directory: wallet-sdk
+      - name: wallet-sdk quality gate
+        run: npm run check
+        working-directory: wallet-sdk
+      - name: wallet-sdk node demo
+        run: npm run validate:node
+        working-directory: wallet-sdk
+
+  frontend-smoke:
+    runs-on: ubuntu-latest
+    needs: wallet-sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build sdk dist
+        run: npm install && npm run build
+        working-directory: wallet-sdk
+      - name: Frontend install
+        run: npm install
+        working-directory: frontend
+      - name: Frontend build smoke
+        run: npm run build
+        working-directory: frontend

@@ -1,0 +1,24 @@
+PORT=3010
+NODE_ENV=development
+
+# JWT（阶段八 SIWE）
+JWT_SECRET=change-me-in-production
+# 管理员访问 /v1/ai/security-audit（生产必填）
+ADMIN_TOKEN=
+# 本地演示：跳过 JWT（勿用于生产）
+BYPASS_AUTH=0
+
+# Optional on-chain relay：ClaimVaultZK.claimAirdrop（须与 circuits anti_sybil 的 11 个 publicSignals 一致）
+RPC_URL=http://127.0.0.1:8545
+CLAIM_VAULT_ADDRESS=
+RELAYER_PRIVATE_KEY=
+
+# Optional PostgreSQL DSN
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/trustaid
+
+# Anti-sybil challenger minimum stake
+MIN_CHALLENGE_STAKE=100
+
+# AI 智能客服（二选一，留空则降级为静态知识库）
+DEEPSEEK_API_KEY=
+OPENAI_API_KEY=

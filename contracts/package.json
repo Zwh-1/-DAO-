@@ -1,0 +1,17 @@
+{
+  "name": "trustaid-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.24.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.0"
+  }
+}

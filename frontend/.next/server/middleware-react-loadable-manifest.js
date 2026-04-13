@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST='{"lib\\\\wallet-adapter.ts -> ethers":{"id":8586,"files":["static/chunks/586.c118afc6cdb4f243.js"]}}';
