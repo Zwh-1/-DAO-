@@ -15,9 +15,9 @@ describe("SBT + OracleManager + Governance", function () {
     registry = await Registry.deploy();
     await registry.waitForDeployment();
 
-    // Register a commitment for alice (commitment = simple number for testing)
+    // Register a commitment（仅 owner 可写）
     const commitment = 12345n;
-    await registry.register(commitment, alice.address);
+    await registry.registerCommitment(commitment, 1);
 
     // Deploy SBT
     const SBT = await ethers.getContractFactory("SBT");
@@ -31,7 +31,7 @@ describe("SBT + OracleManager + Governance", function () {
 
     // Deploy Governance
     const Gov = await ethers.getContractFactory("Governance");
-    governance = await Gov.deploy();
+    governance = await Gov.deploy(await sbt.getAddress());
     await governance.waitForDeployment();
   });
 

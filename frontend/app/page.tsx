@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useHealthCheck, useGovernanceProposals } from "../hooks/useQueries";
+import { PageTransition } from "@/components/ui/index";
 
+// 类型定义
 interface HealthData {
   status: string;
   usedNullifiers: number;
@@ -24,42 +26,18 @@ function StatusDot({ ok }: { ok: boolean }) {
 }
 
 export default function HomePage() {
-  const [health, setHealth] = useState<HealthData | null>(null);
-  const [govStats, setGovStats] = useState<GovStats | null>(null);
-  const [backendOk, setBackendOk] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      // 健康检查
-      try {
-        const res = await fetch("/v1/health", { cache: "no-store" });
-        const data = await res.json();
-        setHealth(data);
-        setBackendOk(res.ok);
-      } catch {
-        setBackendOk(false);
-      }
-
-      // DAO 提案统计
-      try {
-        const res = await fetch("/v1/governance/proposals", { cache: "no-store" });
-        const data = await res.json();
-        const proposals: Array<{ state: string }> = data.proposals ?? [];
-        setGovStats({
-          total: proposals.length,
-          active: proposals.filter(p => p.state === "1").length,
-          passed: proposals.filter(p => p.state === "2").length,
-        });
-      } catch {
-        // 静默失败
-      }
-    }
-    load();
-    const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
-  }, []);
+  // 使用 React Query 替换手写轮询
+  const { health, backendOk, isLoading: healthLoading } = useHealthCheck(30000);
+  const { stats: govStats, isLoading: govLoading } = useGovernanceProposals({
+    autoRefresh: true,
+    refreshInterval: 30000,
+  }) as { stats: GovStats | null; isLoading: boolean };
+  
+  // 类型断言：health 可能为 undefined
+  const healthData = health as HealthData | null | undefined;
 
   return (
+    <PageTransition>
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       <header className="card">
         <h1 className="text-2xl font-bold text-primary">TrustAid 抗女巫空投平台</h1>
@@ -75,29 +53,34 @@ export default function HomePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="rounded-2xl bg-surface/50 p-4 border border-gray-100/60">
             <div className="text-xs text-steel mb-1">后端服务</div>
-            <div className={`text-sm font-semibold ${backendOk === null ? "text-steel" : backendOk ? "text-success" : "text-alert"}`}>
-              {backendOk === null ? "检测中…" : backendOk ? "正常" : "离线"}
+            <div className={`text-sm font-semibold ${
+              healthLoading ? "text-steel" :
+              backendOk === null ? "text-steel" : backendOk ? "text-success" : "text-alert"
+            }`}>
+              {healthLoading ? "加载中..." : backendOk === null ? "检测中…" : backendOk ? "正常" : "离线"}
             </div>
           </div>
 
           <div className="rounded-2xl bg-surface/50 p-4 border border-gray-100/60">
             <div className="text-xs text-steel mb-1">已用 Nullifier</div>
             <div className="text-sm font-semibold text-primary">
-              {health ? health.usedNullifiers : "—"}
+              {healthLoading ? "加载中..." : healthData ? (healthData as HealthData).usedNullifiers : "—"}
             </div>
           </div>
 
           <div className="rounded-2xl bg-surface/50 p-4 border border-gray-100/60">
             <div className="text-xs text-steel mb-1">DAO 提案</div>
             <div className="text-sm font-semibold text-primary">
-              {govStats ? `${govStats.active} 活跃 / ${govStats.total} 总` : "—"}
+              {govLoading ? "加载中..." : govStats ? `${govStats.active} 活跃 / ${govStats.total} 总` : "—"}
             </div>
           </div>
 
           <div className="rounded-2xl bg-surface/50 p-4 border border-gray-100/60">
             <div className="text-xs text-steel mb-1">链上转发</div>
-            <div className={`text-sm font-semibold ${health?.onchainRelay ? "text-success" : "text-steel"}`}>
-              {health ? (health.onchainRelay ? "已启用" : "未配置") : "—"}
+            <div className={`text-sm font-semibold ${
+              healthLoading ? "text-steel" : healthData?.onchainRelay ? "text-success" : "text-steel"
+            }`}>
+              {healthLoading ? "加载中..." : healthData ? (healthData.onchainRelay ? "已启用" : "未配置") : "—"}
             </div>
           </div>
         </div>
@@ -138,7 +121,8 @@ export default function HomePage() {
         <h2 className="section-title mb-3">角色功能导览</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-steel">
           {[
-            ["理赔申请", "/claim", "提交 ZK 证明 + 链上申领"],
+            ["理赔申请", "/claim", "提交保单 + 仲裁 Commit-Reveal 审核"],
+            ["空投奖励", "/airdrop", "提交 ZK 证明 + 链上匿名申领"],
             ["成员中心", "/member", "SBT 画像查询 + 钱包绑定"],
             ["仲裁工作台", "/arbitrator", "Commit-Reveal 投票仲裁"],
             ["挑战者", "/challenger", "质押发起女巫挑战"],
@@ -160,5 +144,6 @@ export default function HomePage() {
         </div>
       </section>
     </div>
+    </PageTransition>
   );
 }

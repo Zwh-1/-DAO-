@@ -12,8 +12,12 @@ export function useTransactionWatcher() {
     setState({ status: "submitted", detail: `Tx: ${txHash.slice(0, 10)}…` });
     try {
       const receipt = await waitForTxReceipt(txHash, opts);
-      if (receipt) setState({ status: "confirmed", detail: `已确认：block ${receipt.blockNumber}` });
-      else setState({ status: "failed", detail: "交易未确认" });
+      if (receipt && typeof receipt === 'object' && 'blockNumber' in receipt) {
+        const blockNum = (receipt as any).blockNumber;
+        setState({ status: "confirmed", detail: `已确认：block ${blockNum}` });
+      } else {
+        setState({ status: "failed", detail: "交易未确认" });
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setState({ status: "failed", detail: msg });

@@ -58,6 +58,7 @@ export function saveClaim(payload) {
   const id = payload.claimId;
   claimRecords.set(id, {
     ...payload,
+    policyId: String(payload.policyId || ""),
     status: "PENDING_REVIEW",
     createdAt: nowTs()
   });
@@ -66,6 +67,44 @@ export function saveClaim(payload) {
 
 export function getClaimById(claimId) {
   return claimRecords.get(claimId) || null;
+}
+
+/**
+ * 按地址查询申领记录（分页）
+ * @param {string} address
+ * @param {{ page?: number, limit?: number }} opts
+ */
+export function listClaimsByAddress(address, opts = {}) {
+  const key = String(address).toLowerCase();
+  const page = Math.max(1, Number(opts.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(opts.limit) || 20));
+  const offset = (page - 1) * limit;
+
+  const all = [...claimRecords.values()]
+    .filter((c) => String(c.address).toLowerCase() === key)
+    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
+  return {
+    claims: all.slice(offset, offset + limit),
+    total: all.length,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(all.length / limit)),
+  };
+}
+
+/**
+ * 更新申领状态（Guardian/Oracle 操作）
+ * @param {string} claimId
+ * @param {string} newStatus
+ * @returns {object|null}
+ */
+export function updateClaimStatus(claimId, newStatus) {
+  const claim = claimRecords.get(claimId);
+  if (!claim) return null;
+  claim.status = newStatus;
+  claim.updatedAt = Math.floor(Date.now() / 1000);
+  return { ...claim };
 }
 
 export function getOrCreateMemberProfile(address) {
@@ -177,6 +216,16 @@ export function createChallenge(payload) {
   return data;
 }
 
+/**
+ * @param {{ challenger?: string }} opts
+ */
+export function listChallenges(opts = {}) {
+  const rows = [...challengeRecords.values()].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  const c = opts.challenger ? String(opts.challenger).toLowerCase() : "";
+  if (!c) return rows;
+  return rows.filter((r) => String(r.challenger ?? "").toLowerCase() === c);
+}
+
 // ── 预言机多签报告 ─────────────────────────────────────────────────────────
 
 const MIN_QUORUM      = 3;
@@ -233,6 +282,36 @@ export function getOracleReport(reportId) {
   return { ...r, signatures: r.signers.length };
 }
 
+/**
+ * 预言机报告列表（脱敏 dataHash）
+ * @param {{ page?: number, limit?: number }} opts
+ */
+export function listOracleReports(opts = {}) {
+  const page = Math.max(1, Number(opts.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(opts.limit) || 20));
+  const all = [...oracleReportsFull.values()]
+    .map((r) => ({
+      reportId: r.reportId,
+      claimId: r.claimId,
+      dataHashPreview: r.dataHash ? `${String(r.dataHash).slice(0, 16)}…` : "",
+      signatures: r.signers.length,
+      finalized: r.finalized,
+      approved: r.approved,
+      fastTrack: r.fastTrack,
+      createdAt: r.createdAt,
+    }))
+    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  const offset = (page - 1) * limit;
+  const slice = all.slice(offset, offset + limit);
+  return {
+    reports: slice,
+    total: all.length,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(all.length / limit)),
+  };
+}
+
 // ── 守护者 ────────────────────────────────────────────────────────────────
 
 export function setSystemPaused(paused, { by, reason }) {
@@ -253,6 +332,15 @@ export function banAddress(address, { by, reason }) {
 
 export function isAddressBanned(address) {
   return blacklist.has(address.toLowerCase());
+}
+
+/** @returns {{ address: string, reason: string, bannedAt: number }[]} */
+export function listBlacklistEntries() {
+  return [...blacklist.entries()].map(([address, meta]) => ({
+    address,
+    reason: meta.reason,
+    bannedAt: meta.bannedAt,
+  }));
 }
 
 export function getGuardianStatus() {
@@ -306,6 +394,18 @@ export function castVote({ proposalId, voter, support }) {
   else                    proposal.abstainVotes  += 10;
 
   return { ...proposal };
+}
+
+export function getProposalById(id) {
+  const p = govProposals.get(Number(id));
+  if (!p) return null;
+  const now = nowTs();
+  let state = p.state;
+  if (now > p.endTime && state === "1") {
+    state = p.forVotes > p.againstVotes ? "2" : "3";
+    p.state = state;
+  }
+  return { ...p, state };
 }
 
 export function listProposals() {

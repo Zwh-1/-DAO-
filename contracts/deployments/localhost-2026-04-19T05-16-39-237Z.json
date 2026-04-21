@@ -1,0 +1,17 @@
+{
+  "network": "localhost",
+  "timestamp": "2026-04-19T05-16-39-237Z",
+  "deployer": "0x1Be31A94361a391bBaFB2a4CCd704F57dc04d4bb",
+  "contracts": {
+    "MockGroth16Verifier": "0x0ACF3597a98371dd15410Dfa13F0F9F521078436",
+    "IdentityRegistry": "0x1A5C27a0818ACb6cd8f0bedAAeFAC765c7485C77",
+    "ClaimVaultZK": "0x35d7425D030B766618fCf25c2AecA8d1E402a3a0",
+    "SBT": "0x5F445625Cf7c9f59AC6A88843305e4F52c37d6bf",
+    "ArbitratorPool": "0x91C0f1cb6A423FA2005585FA7116341e16294c47",
+    "ChallengeManager": "0x252b4fB7113007955239533859aA015A4649A654",
+    "OracleManager": "0x93a7F1cbE031240f6eD4c72b6d68987e3C5007a5",
+    "Governance": "0xB10aC8969DbA8A487A9e268E313a8408eAe4D5f5",
+    "PaymentChannel": "0xAbAC00861a337db08718134290941580B5D0423A",
+    "AnonymousClaim": "0x53ECEdE16dBE1d4cFcd5b1572Efc73515ce2500F"
+  }
+}

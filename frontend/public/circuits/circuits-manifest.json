@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "buildPrefix": "/circuits/build",
+  "circuits": [
+    { "name": "identity_commitment", "wasm": "/circuits/build/identity_commitment.wasm", "zkey": "/circuits/build/identity_commitment_final.zkey" },
+    { "name": "anti_sybil_claim", "wasm": "/circuits/build/anti_sybil_claim.wasm", "zkey": "/circuits/build/anti_sybil_claim_final.zkey" },
+    { "name": "anonymous_claim", "wasm": "/circuits/build/anonymous_claim.wasm", "zkey": "/circuits/build/anonymous_claim_final.zkey" },
+    { "name": "anti_sybil_verifier", "wasm": "/circuits/build/anti_sybil_verifier.wasm", "zkey": "/circuits/build/anti_sybil_verifier_final.zkey", "merkleLevels": 20 },
+    { "name": "confidential_transfer", "wasm": "/circuits/build/confidential_transfer.wasm", "zkey": "/circuits/build/confidential_transfer_final.zkey" },
+    { "name": "multi_sig_proposal", "wasm": "/circuits/build/multi_sig_proposal.wasm", "zkey": "/circuits/build/multi_sig_proposal_final.zkey" },
+    { "name": "privacy_payment", "wasm": "/circuits/build/privacy_payment.wasm", "zkey": "/circuits/build/privacy_payment_final.zkey" },
+    { "name": "reputation_verifier", "wasm": "/circuits/build/reputation_verifier.wasm", "zkey": "/circuits/build/reputation_verifier_final.zkey" },
+    { "name": "history_anchor", "wasm": "/circuits/build/history_anchor.wasm", "zkey": "/circuits/build/history_anchor_final.zkey" },
+    { "name": "private_payment", "wasm": "/circuits/build/private_payment.wasm", "zkey": "/circuits/build/private_payment_final.zkey" }
+  ]
+}

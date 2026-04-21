@@ -22,6 +22,8 @@ const circuitsRoot = path.join(__dirname, '..');
 // ── 所有电路列表 ─────────────────────────────────────────────────────────────
 const CIRCUITS = [
   'identity_commitment',
+  'anonymous_claim',
+  'anti_sybil_claim',
   'anti_sybil_verifier',
   'history_anchor',
   'confidential_transfer',

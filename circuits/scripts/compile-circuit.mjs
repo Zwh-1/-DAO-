@@ -92,8 +92,9 @@ for (const dir of [outputDir]) {
   try { fs.rmSync(path.join(dir, `${circuitName}.sym`),   { force: true }); } catch {}
   try { fs.rmSync(path.join(dir, `${circuitName}_js`),    { recursive: true, force: true }); } catch {}
 }
-// 清理可能残留在 src/ 或 claims/ 中的旧产物
+// 清理可能残留在仓库根（circom cwd）、src/、claims/ 的旧产物
 for (const srcDir of [
+  circuitsRoot,
   path.join(circuitsRoot, 'src'),
   path.join(circuitsRoot, 'claims'),
 ]) {
@@ -131,7 +132,6 @@ const preopens = {
 };
 
 // 全部使用相对正斜杠路径传给 circom2（规避 Windows 绝对路径的 ENOTCAPABLE 问题）
-const relOutput  = fwd(path.relative(circuitsRoot, outputDir));
 const relCircuit = fwd(path.relative(circuitsRoot, circuitPath));
 const relLib     = fwd(path.relative(circuitsRoot, libDir));
 
@@ -141,22 +141,9 @@ const relLib     = fwd(path.relative(circuitsRoot, libDir));
 //   relSrc   → src/（用于 utils/ 子目录引用）
 // 各 .circom 文件内已使用正确的相对路径 include（如 ../node_modules/...、./utils/...），
 // 由 circom 编译器按文件位置直接解析，不受 -l 影响，无需额外搜索路径干预。
-const circomArgs = [
-  relCircuit,
-  '--r1cs', '--wasm', '--sym',
-  '-o', relOutput,
-  '-l', '.',
-  '-l', relLib,
-  '-l', 'src',  // [新增] 支持 src/ 下的 utils/ 子目录引用
-];
-
-console.log('[1/2] Compiling circuit...');
-console.log(`      circom ${circomArgs.join(' ')}`);
-console.log();
-
 // ── 简化方案：直接使用 child_process 调用 circom2 CLI ─────────────────────────
 // 背景：circom2 的 WASI 沙箱在 Windows 上存在路径兼容性问题
-// 解决方案：使用 spawn 直接调用 circom2.cmd，绕过 WASI 沙箱
+// 解决方案：使用 spawn 直接调用 circom2 可执行文件（Windows 为 .cmd，Unix 为无后缀），绕过 WASI 沙箱
 // 关键修复：移除 -o 参数，先生成到当前目录，再手动移动文件
 
 import { spawn } from 'child_process';
@@ -177,21 +164,34 @@ const circom2Args = [
   '-l', 'src',  // [新增] 支持 src/ 下的 utils/ 子目录引用
 ];
 
-const circom2Path = path.join(circuitsRoot, 'node_modules', '.bin', 'circom2.cmd');
+console.log(`      circom2 ${circom2Args.join(' ')}`);
+console.log('');
+
+// Windows 使用 circom2.cmd；Linux/macOS 使用无后缀的 circom2（用 .cmd 会被 bash 当脚本解析而报错）
+const circom2BinDir = path.join(circuitsRoot, 'node_modules', '.bin');
+const circom2Candidates =
+  process.platform === 'win32'
+    ? ['circom2.cmd', 'circom2']
+    : ['circom2', 'circom2.cmd'];
+let circom2Path = path.join(circom2BinDir, circom2Candidates[0]);
+for (const name of circom2Candidates) {
+  const p = path.join(circom2BinDir, name);
+  if (fs.existsSync(p)) {
+    circom2Path = p;
+    break;
+  }
+}
 
 const child = spawn(circom2Path, circom2Args, {
   stdio: 'inherit',
   cwd: circuitsRoot,
-  shell: true,  // Windows 下必须
+  shell: process.platform === 'win32',
 });
 
-let compileSuccess = false;
 await new Promise((resolve) => {
   child.on('close', (code) => {
-    // circom2 返回 1 不一定是致命错误（WASM 生成失败但 R1CS/SYM 可能成功）
-    // 我们允许非零退出码，稍后验证实际生成的文件
+    // 非零退出码仍继续：由后续 R1CS/SYM/WASM 文件检查判定成败（含仅 WASM 失败）
     console.log(`\n[INFO] circom2 进程结束，退出码：${code}`);
-    compileSuccess = (code === 0);
     resolve();
   });
   
@@ -207,28 +207,37 @@ console.log('[2/2] 移动文件...');
 // 确保输出目录存在
 fs.mkdirSync(outputDir, { recursive: true });
 
-// 移动 R1CS 和 SYM 文件（circom2 生成在电路文件所在目录）
+// circom2 的 cwd 为 circuitsRoot 时，产物写在仓库根下 ./name.r1cs（见日志 Written successfully: ./xxx）；
+// 部分环境也会写在 .circom 同目录，故按顺序尝试两处再迁入 build/<name>/。
 const circuitDir = path.dirname(circuitPath);
+const artifactBases = [circuitsRoot, circuitDir];
 const filesToMove = [
-  { src: path.join(circuitDir, `${circuitName}.r1cs`), dst: path.join(outputDir, `${circuitName}.r1cs`) },
-  { src: path.join(circuitDir, `${circuitName}.sym`),  dst: path.join(outputDir, `${circuitName}.sym`) },
-  { src: path.join(circuitDir, `${circuitName}_js`),   dst: path.join(outputDir, `${circuitName}_js`) },
+  { name: `${circuitName}.r1cs`, isDir: false },
+  { name: `${circuitName}.sym`, isDir: false },
+  { name: `${circuitName}_js`, isDir: true },
 ];
 
-for (const { src, dst } of filesToMove) {
+for (const { name, isDir } of filesToMove) {
+  const dst = path.join(outputDir, name);
+  let src = null;
+  for (const base of artifactBases) {
+    const p = path.join(base, name);
+    if (fs.existsSync(p)) {
+      src = p;
+      break;
+    }
+  }
+  if (!src) continue;
   try {
-    if (fs.existsSync(src)) {
-      // 如果是目录（如 *_js），使用 rmSync 先删除目标再移动
-      if (fs.statSync(src).isDirectory()) {
-        fs.rmSync(dst, { recursive: true, force: true });
-        fs.cpSync(src, dst, { recursive: true });
-        fs.rmSync(src, { recursive: true, force: true });
-      } else {
-        fs.renameSync(src, dst);
-      }
+    if (isDir) {
+      fs.rmSync(dst, { recursive: true, force: true });
+      fs.cpSync(src, dst, { recursive: true });
+      fs.rmSync(src, { recursive: true, force: true });
+    } else {
+      fs.renameSync(src, dst);
     }
   } catch (err) {
-    // 忽略移动错误
+    console.error(`[错误] 移动产物失败 ${name}: ${err instanceof Error ? err.message : err}`);
   }
 }
 
@@ -238,7 +247,6 @@ const sym  = path.join(outputDir, `${circuitName}.sym`);
 const wasm = path.join(outputDir, `${circuitName}_js`, `${circuitName}.wasm`);
 
 let ok = true;
-let wasmOk = false;
 
 if (!fs.existsSync(r1cs)) { 
   console.error(`[错误] R1CS 缺失`); 
@@ -250,14 +258,11 @@ if (!fs.existsSync(sym)) {
   ok = false; 
 }
 
-if (withWasm && !fs.existsSync(wasm)) { 
-  console.warn(`[警告] WASM 生成失败（Windows 中文路径限制）`);
-  wasmOk = false;
-} else if (!withWasm) {
-  // 不检查 WASM
-  wasmOk = true;
-} else {
-  wasmOk = true;
+if (withWasm && !fs.existsSync(wasm)) {
+  console.error(`[错误] WASM 缺失（已传 --with-wasm）：${wasm}`);
+  console.error('       常见：Windows 路径/WASI；或 Linux 误执行 circom2.cmd（须用无后缀 circom2）。');
+  console.error('       建议：Windows 用英文短路径/WSL；Linux 用本仓库 compile-circuit 的平台分支并在本机 npm install。');
+  ok = false;
 }
 
 if (!ok) {
@@ -270,11 +275,7 @@ if (!ok) {
 console.log('================================================================');
 console.log(` 编译成功：${circuitName}`);
 console.log('================================================================');
-if (withWasm && !wasmOk) {
-  console.log(' R1CS + SYM: ✓  |  WASM: ✗ (Windows 限制)');
-} else {
-  console.log(' 状态：R1CS + SYM + WASM ✓');
-}
+console.log(withWasm ? ' 状态：R1CS + SYM + WASM ✓' : ' 状态：R1CS + SYM ✓');
 console.log('================================================================');
 if (!withWasm) {
   console.log(' 提示：需要 WASM 请添加 --with-wasm 参数');

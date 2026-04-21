@@ -12,7 +12,7 @@
     "test:circuits": "cd circuits && npm test",
     "test:circuits:full": "cd circuits && cross-env RUN_CIRCOM_TESTS=1 npm test",
     "test:all": "npm run test:contracts && npm run test:circuits",
-    "start:backend": "cd backend && npm run start",
+    "start:backend": "cd backend && node ./node_modules/vite/bin/vite.js build && npm run start",
     "start:frontend": "cd frontend && npm run build && npm run start",
     "dev:backend": "cd backend && npm run dev",
     "dev:backend:start": "cd backend && npm run start",
@@ -36,8 +36,14 @@
     "clean": "npm run clean:circuits && npm run clean:contracts",
     "clean:circuits": "cd circuits && node scripts/clean.mjs",
     "clean:contracts": "cd contracts && npx hardhat clean",
-    "info:circuits": "cd circuits && node scripts/info.mjs",
-    "docs": "npx marked README.md -o docs/output.html"
+    "docs": "npx marked README.md -o docs/output.html",
+    
+    "frontend:export-resources": "cd frontend && npm run export-resources",
+    "frontend:export-abis": "cd frontend && npm run export-abis",
+    "frontend:export-circuits": "cd frontend && npm run export-circuits",
+    "export:resources": "cd frontend && npm run export-resources",
+    "export:abis": "cd frontend && npm run export-abis",
+    "export:circuits": "cd frontend && npm run export-circuits"
   },
   "keywords": [
     "zero-knowledge-proof",

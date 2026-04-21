@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../verifiers/IGroth16Verifier.sol";
+import "../verifiers/IAntiSybilGroth16Verifier.sol";
 import "./IdentityRegistry.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "../libraries/ECRecoverLib.sol";
 
 /// @dev ZK 申领入口：合约层二次校验金额 + Nullifier 防重放（与电路约束双保险）
 /// @notice 安全重构版：添加多链重放保护（EIP-712 Domain Separator）
@@ -19,6 +18,10 @@ contract ClaimVaultZK is ReentrancyGuard {
     error TransferFailed();
     error InvalidSignature();
     error SignatureLengthInvalid();
+    error MerkleRootMismatch();
+    error ParameterHashMismatch();
+    error InvalidUserLevel();
+    error BadPublicSignalCount();
 
     // 事件定义
     event ClaimAirdropped(
@@ -35,8 +38,17 @@ contract ClaimVaultZK is ReentrancyGuard {
     bytes32 public immutable DOMAIN_SEPARATOR;
     bytes32 public constant CLAIM_TYPEHASH = keccak256("Claim(uint256 nullifier,uint256 identityCommitment,uint256 projectId)");
 
-    IGroth16Verifier public immutable verifier;
+    IAntiSybilGroth16Verifier public immutable verifier;
     IdentityRegistry public immutable registry;
+
+    /// @notice 白名单 Merkle 根，须与 `pubSignals[0]` 一致
+    uint256 public immutable expectedMerkleRoot;
+
+    /// @notice Poseidon(min_level, min_amount, max_amount, ts_start, ts_end, airdrop_project_id)，须与 `pubSignals[6]` 一致
+    uint256 public immutable expectedParameterHash;
+
+    /// @notice EIP-712 Claim 绑定用项目 ID（与电路私有输入 airdrop_project_id 一致）
+    uint256 public immutable airdropProjectId;
 
     // ✅ 修复：usedNullifiers 映射键类型从 bytes32 改为 uint256
     mapping(uint256 => bool) public usedNullifiers;
@@ -56,12 +68,18 @@ contract ClaimVaultZK is ReentrancyGuard {
         address verifier_,
         address registry_,
         uint256 minAmount,
-        uint256 maxAmount
+        uint256 maxAmount,
+        uint256 expectedMerkleRoot_,
+        uint256 expectedParameterHash_,
+        uint256 airdropProjectId_
     ) {
-        verifier = IGroth16Verifier(verifier_);
+        verifier = IAntiSybilGroth16Verifier(verifier_);
         registry = IdentityRegistry(registry_);
         minClaimAmount = minAmount;
         maxClaimAmount = maxAmount;
+        expectedMerkleRoot = expectedMerkleRoot_;
+        expectedParameterHash = expectedParameterHash_;
+        airdropProjectId = airdropProjectId_;
         owner = msg.sender;
         
         // ✅ 初始化 Domain Separator（硬编码 chainid，防止跨链重放）
@@ -106,20 +124,15 @@ contract ClaimVaultZK is ReentrancyGuard {
         paused = v;
     }
 
-    /// @notice pubSignals 与 `anti_sybil_verifier.circom` 的 public 输出严格对齐（共 13 个）：
-    /// [0]  merkle_root          - 白名单 Merkle 根
-    /// [1]  identity_commitment  - 身份承诺（用于注册表验证）
-    /// [2]  nullifier_hash       - 防重放 Nullifier
-    /// [3]  min_level            - 最低信誉等级门槛
-    /// [4]  user_level           - 用户实际信誉等级
-    /// [5]  min_amount           - 最低申领金额
-    /// [6]  max_amount           - 最高申领金额
-    /// [7]  claim_amount         - 实际申领金额
-    /// [8]  claim_ts             - 申领时间戳
-    /// [9]  ts_start             - 空投开始时间
-    /// [10] ts_end               - 空投结束时间
-    /// [11] airdrop_project_id   - 空投项目 ID（防跨项目重放）
-    /// [12] merkle_leaf          - Merkle 叶子哈希
+    /// @notice pubSignals 与 `anti_sybil_verifier.circom` 的 public 输出严格对齐（共 8 个）：
+    /// [0] merkle_root
+    /// [1] identity_commitment
+    /// [2] nullifier_hash
+    /// [3] user_level
+    /// [4] claim_amount
+    /// [5] claim_ts
+    /// [6] parameter_hash  — Poseidon(min_level, min_amount, max_amount, ts_start, ts_end, airdrop_project_id)
+    /// [7] merkle_leaf
     function claimAirdrop(
         uint256[2] calldata a,
         uint256[2][2] calldata b,
@@ -128,17 +141,28 @@ contract ClaimVaultZK is ReentrancyGuard {
         bytes calldata signature  // ✅ EIP-712 签名（防跨链重放）
     ) external nonReentrant {
         if (paused) revert Paused();
-        if (!verifier.verifyProof(a, b, c, pubSignals)) revert InvalidProof();
-        require(pubSignals.length == 13, "bad public signals length");
+        if (pubSignals.length != 8) revert BadPublicSignalCount();
 
-        //  解析 Public Signals（与电路层输出顺序严格一致）
-        uint256 identityCommitment = pubSignals[1];
-        uint256 nullifier = pubSignals[2];
-        uint256 claimAmount = pubSignals[7];
-        uint256 claimTs = pubSignals[8];
-        uint256 tsStart = pubSignals[9];
-        uint256 tsEnd = pubSignals[10];
-        uint256 projectId = pubSignals[11];
+        uint256[8] memory pub8;
+        for (uint256 i = 0; i < 8; ) {
+            pub8[i] = pubSignals[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        if (!verifier.verifyProof(a, b, c, pub8)) revert InvalidProof();
+
+        uint256 merkleRoot = pub8[0];
+        uint256 identityCommitment = pub8[1];
+        uint256 nullifier = pub8[2];
+        uint256 userLevel = pub8[3];
+        uint256 claimAmount = pub8[4];
+        uint256 claimTs = pub8[5];
+        uint256 parameterHash = pub8[6];
+
+        if (merkleRoot != expectedMerkleRoot) revert MerkleRootMismatch();
+        if (parameterHash != expectedParameterHash) revert ParameterHashMismatch();
 
         // ── 验证 1: Nullifier 防重放 ────────────────────────────────────
         if (usedNullifiers[nullifier]) revert NullifierAlreadyUsed();
@@ -153,16 +177,17 @@ contract ClaimVaultZK is ReentrancyGuard {
             revert InvalidClaimAmount();
         }
 
-        // ── 验证 4: 时间窗口（合约层二次验证）────────────────────────────
-        if (claimTs < tsStart || claimTs > tsEnd) {
-            revert InvalidClaimAmount();
-        }
+        // ── 验证 4: 申领时间不晚于链上时间（电路已约束 ts 窗口并绑定 parameter_hash）
+        if (claimTs > block.timestamp) revert InvalidClaimAmount();
 
-        // ── 验证 5: ✅ 强制检查身份承诺状态（抛出错误代码）──────────────
+        // ── 验证 5: 身份注册表等级与公开 user_level 一致（与 Merkle 叶子一致）
+        if (uint256(registry.levelOf(identityCommitment)) != userLevel) revert InvalidUserLevel();
+
+        // ── 验证 6: ✅ 强制检查身份承诺状态（抛出错误代码）──────────────
         registry.checkCommitmentStatus(identityCommitment);
 
-        // ── 验证 6: ✅ 验证 EIP-712 签名（包含 chainid，防止跨链重放）──
-        _verifyClaimSignature(msg.sender, nullifier, identityCommitment, projectId, signature);
+        // ── 验证 7: ✅ 验证 EIP-712 签名（包含 chainid，防止跨链重放）──
+        _verifyClaimSignature(msg.sender, nullifier, identityCommitment, airdropProjectId, signature);
 
         // ── 记录 Nullifier 已使用 ─────────────────────────────────────
         usedNullifiers[nullifier] = true;
@@ -226,20 +251,14 @@ contract ClaimVaultZK is ReentrancyGuard {
      * @param sig 签名（65 字节）
      * @return signer 签名者地址
      */
-    function _recoverSigner(bytes32 digest, bytes calldata sig) internal view returns (address) {
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        
-        // 内联汇编提取 r, s, v
-        assembly {
-            r := calldataload(sig.offset)
-            s := calldataload(add(sig.offset, 0x20))
-            v := and(calldataload(add(sig.offset, 0x40)), 0xff)
-        }
-        
+    function _recoverSigner(bytes32 digest, bytes calldata sig) internal pure returns (address) {
+        if (sig.length != 65) revert SignatureLengthInvalid();
+        bytes32 r = bytes32(sig[0:32]);
+        bytes32 s = bytes32(sig[32:64]);
+        uint8 v = uint8(sig[64]);
         if (v != 27 && v != 28) revert InvalidSignature();
-        
-        return ECRecoverLib.ecrecover(digest, v, r, s);
+        address recovered = ecrecover(digest, v, r, s);
+        if (recovered == address(0)) revert InvalidSignature();
+        return recovered;
     }
 }

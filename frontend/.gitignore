@@ -1,0 +1,60 @@
+# 依赖
+node_modules/
+.pnp
+.pnp.js
+
+# 测试
+coverage/
+
+# 生产构建
+build/
+dist/
+.next/
+
+# 环境变量
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 调试
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# ZKP 电路文件（敏感）
+# 注意：电路密钥和证明文件包含敏感数据，禁止提交
+public/circuits/keys/*.zkey
+public/circuits/proofs/*.json
+public/circuits/publicInputs/*.json
+
+# 临时文件
+public/circuits/tmp/
+*.tmp
+
+# 日志
+logs/
+*.log
+
+# 缓存
+.cache/
+.turbo/
+
+# TypeScript
+*.tsbuildinfo
+
+# 测试文件（可选）
+test-results/
+playwright-report/

@@ -3,79 +3,123 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #0A2540;
-  --color-success: #2D8A39;
-  --color-danger: #991b1b;
-  --color-surface: #f4f4f5;
-  --primary: #0A2540;
-  --success: #2D8A39;
-  --alert: #D93025;
-  --base: #fafafa;
-  --steel: #52525b;
+  /* 基础色板：医疗级深蓝色系 (Dark Navy) */
+  --color-primary: #0A2540;     /* 品牌主色/文字深色 */
+  --color-primary-light: #1A3A5A;
+  
+  /* 状态色：基于高对比度准则 */
+  --color-success: #15803d;     /* 增强后的绿色 (Tailwind green-700) */
+  --color-alert: #b91c1c;       /* 增强后的红色 (Tailwind red-700) */
+  --color-warning: #b45309;     /* 琥珀色用于警告 */
+  
+  /* 中性色与表面层级 */
+  --color-base: #f8fafc;        /* 极浅蓝灰背景 (Slate-50) */
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;      /* 标准边框色 (Slate-200) */
+  --color-steel: #475569;       /* 辅助文字 (Slate-600) */
+  
+  /* 交互层级 */
+  --color-ring: rgba(10, 37, 64, 0.1);
 }
 
 body {
   margin: 0;
-  color: var(--primary);
-  background: var(--base);
-  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--color-primary);
+  background: var(--color-base);
+  /* 字体优化：优先加载高性能无衬线体，增加字间距微调 */
+  font-family: 'Inter var', Inter, system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 @layer components {
+  /* 核心卡片容器：增加平滑过渡与更细致的投影 */
   .card {
-    @apply rounded-2xl border border-gray-100/60 bg-white p-6 shadow-sm;
+    @apply rounded-xl border border-slate-200 bg-white p-6 shadow-sm 
+           transition-all duration-200 ease-in-out;
   }
+  
   .card-compact {
-    @apply rounded-2xl border border-gray-100/60 bg-white p-4 shadow-sm;
+    @apply rounded-lg border border-slate-200 bg-white p-4 shadow-sm;
   }
+
+  /** 个人资料页专用：方案六柔和大卡（勿用于全站 .card，避免破坏侧栏） */
+  .profile-page-shell {
+    @apply min-h-full;
+    background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 40%, #f1f5f9 100%);
+  }
+
+  .profile-soft-card {
+    @apply rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-[0_1px_3px_rgba(10,37,64,0.05)]
+           backdrop-blur-sm transition-all duration-200 md:p-8;
+  }
+
+  .profile-soft-card:hover {
+    @apply border-slate-200 shadow-[0_4px_16px_rgba(10,37,64,0.07)];
+  }
+
+  /* 标题：加深字重，提升层级感 */
   .section-title {
-    @apply text-lg font-semibold text-primary;
+    @apply text-lg font-bold text-slate-900 tracking-tight;
   }
+
+  /* 描述：确保对比度符合 WCAG AA 标准 */
   .section-desc {
-    @apply text-sm text-steel;
+    @apply text-sm leading-relaxed text-slate-500;
   }
+
+  /* 报错横幅：改用填充色增强视觉优先级 */
   .error-banner {
-    @apply rounded-2xl border border-alert/30 bg-alert/5 p-4 text-sm text-alert;
+    @apply rounded-xl border-l-4 border-alert/80 bg-red-50 p-4 text-sm text-alert font-medium flex items-center gap-3;
   }
+
+  /* 结果展示区：使用更专业的等宽字体栈 */
   .result-pre {
-    @apply overflow-auto rounded-2xl border border-gray-100/60 bg-surface p-4 text-xs text-steel;
+    @apply overflow-auto rounded-xl border border-slate-200 bg-slate-900 p-5 
+           font-mono text-xs text-slate-300 leading-normal;
   }
 }
 
+/* 隐私盾组件优化 */
 .privacy-shield {
-  width: 84px;
-  height: 84px;
-  border: 3px solid var(--primary);
-  border-radius: 24px 24px 30px 30px;
+  width: 80px;
+  height: 80px;
+  border: 3px solid var(--color-primary);
+  border-radius: 20px;
   position: relative;
   background: #ffffff;
-  animation: shield-pulse 1.8s ease-in-out infinite;
+  /* 性能优化：强制开启 GPU 加速 */
+  will-change: transform, box-shadow;
+  animation: shield-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .privacy-shield::after {
   content: "";
   position: absolute;
-  inset: 12px;
-  border: 2px solid var(--primary);
-  border-radius: 18px;
+  width: 60%;
+  height: 60%;
+  border: 2px solid var(--color-primary);
+  border-radius: 12px;
+  opacity: 0.6;
 }
 
 @keyframes shield-pulse {
-  0% {
+  0%, 100% {
     transform: scale(1);
-    opacity: 0.85;
-    box-shadow: 0 0 0 0 rgba(10, 37, 64, 0.2);
+    box-shadow: 0 0 0 0 var(--color-ring);
   }
   50% {
-    transform: scale(1.05);
-    opacity: 1;
-    box-shadow: 0 0 20px 4px rgba(10, 37, 64, 0.15);
+    transform: scale(1.03);
+    box-shadow: 0 0 25px 8px var(--color-ring);
   }
-  100% {
-    transform: scale(1);
-    opacity: 0.85;
-    box-shadow: 0 0 0 0 rgba(10, 37, 64, 0.2);
-  }
+}
+
+/* 打印优化：医疗软件常见需求 */
+@media print {
+  .card { @apply shadow-none border-slate-300; }
+  .privacy-shield { animation: none; }
 }

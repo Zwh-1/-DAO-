@@ -125,4 +125,6 @@ template AnonymousClaim() {
     timeEndCheck.out === 1;  // current <= ts_end
 }
 
-component main = AnonymousClaim();
+// 公开信号声明：这些信号将出现在验证器合约的 _pubSignals 参数中
+// 顺序必须与 AnonymousClaim.sol claim() 中 pubSignals 顺序一致（7 元）
+component main { public [merkle_root, nullifier, commitment, claim_amount, current_timestamp, ts_start, ts_end] } = AnonymousClaim();

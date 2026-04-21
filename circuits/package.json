@@ -7,8 +7,6 @@
     "compile": "node scripts/compile-circuit.mjs identity_commitment",
     "compile:all": "node scripts/compile-all.mjs",
     "compile:all:wasm": "node scripts/compile-all.mjs --with-wasm",
-    "compile:circuit": "node scripts/compile-circuit.mjs",
-    "compile:circuit:wasm": "node scripts/compile-circuit.mjs --with-wasm",
     "ptau:generate": "node scripts/generate-ptau-local.mjs",
     "zk:setup": "node scripts/zk-setup.mjs",
     "zk:setup:all": "node scripts/zk-setup-all.mjs",
@@ -20,13 +18,17 @@
     "zk:export:all": "node scripts/zk-export-verifier.mjs all",
     "zk:export:circuit": "node scripts/zk-export-verifier.mjs",
     "zk:full": "npm run zk:setup && npm run zk:export",
+    "export-keys": "node scripts/export-keys.js",
+    "export-key": "node scripts/export-keys.js",
     "clean": "node scripts/clean.mjs",
     "clean:zkey": "node scripts/clean.mjs zkey",
     "clean:build": "node scripts/clean.mjs build",
     "clean:all": "node scripts/clean.mjs all",
     "info": "node scripts/info.mjs",
+    "sync:frontend": "node scripts/sync-public-circuit-artifacts.mjs",
     "test": "node --experimental-vm-modules node_modules/mocha/bin/mocha.js test/circuits.test.js",
-    "test:circom": "cross-env RUN_CIRCOM_TESTS=1 node --experimental-vm-modules node_modules/mocha/bin/mocha.js test/circuits.test.js"
+    "test:circom": "cross-env RUN_CIRCOM_TESTS=1 node --experimental-vm-modules node_modules/mocha/bin/mocha.js test/circuits.test.js",
+    "test:heavy": "cross-env RUN_CIRCOM_TESTS=1 npm test"
   },
   "devDependencies": {
     "chai": "^4.5.0",

@@ -12,7 +12,7 @@ Browser (`createWalletClient`):
 - `sendTransaction(tx, opts?)`
 - `switchChain(chainIdHex)`
 - `addChainThenSwitch(chainConfig)`
-- `createEmbeddedWallet(password)`
+- `createEmbeddedWallet(password)` → `{ address, mnemonic }`（助记词仅创建时返回一次，用于备份展示）
 - `importEmbeddedMnemonic(password, mnemonic)`
 - `deriveNextEmbeddedAccount(password)`
 - `listEmbeddedAccounts(password)`
@@ -21,7 +21,7 @@ Browser (`createWalletClient`):
 
 Node (`createNodeWalletClient`):
 - `getRuntimeInfo()`
-- `createEmbeddedWallet(password)`
+- `createEmbeddedWallet(password)` → `{ address, mnemonic }`（助记词仅创建时返回一次，用于备份展示）
 - `signMessage(message, opts)`
 - `signTypedData(typedData, opts)`
 - `sendTransaction(tx, opts)`

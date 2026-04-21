@@ -13,8 +13,8 @@ template IdentityCommitment() {
     signal input social_id_hash;    // Web2 社交 ID 的域元素哈希 (链下预处理，须 < 2^254)
     signal input secret;            // Semaphore 身份秘钥
     signal input trapdoor;          // Semaphore 陷门
-
-    signal output identity_commitment;
+    // 与 Poseidon 输出绑定，作为 Groth16 public 供链上写入承诺根（与 verifier 2 public 对齐）
+    signal input identity_commitment;
 
     // ── 域安全约束 ───────────────────────────────────────────────────────────
     // BN128 曲线素数域 p ≈ 2^254.7；Keccak256 输出 256 位，高位两位可能溢出。
@@ -29,8 +29,8 @@ template IdentityCommitment() {
     h.inputs[0] <== social_id_hash;
     h.inputs[1] <== secret;
     h.inputs[2] <== trapdoor;
-    identity_commitment <== h.out;
+    identity_commitment === h.out;
 }
 
-// social_id_hash 为公开输入（用于链上关联验证），secret/trapdoor 保持私有
-component main { public [social_id_hash] } = IdentityCommitment();
+// 公开顺序：[0] social_id_hash [1] identity_commitment（与 IdentityCommitmentZK / Groth16Verifier 一致）
+component main { public [social_id_hash, identity_commitment] } = IdentityCommitment();

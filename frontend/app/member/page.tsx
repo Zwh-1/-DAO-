@@ -4,10 +4,10 @@ import { FormEvent, useState } from "react";
 import { bindWallet, getMemberProfile } from "../../lib/api";
 import { toUserErrorMessage } from "../../lib/error-map";
 import { requireEthAddress, requireNonEmpty } from "../../lib/validators";
-import { RoleGuard } from "../../components/auth/RoleGuard";
+import { RoleGuard } from "@/features/governance";
 import { useSIWE } from "../../hooks/useSIWE";
-import { Input } from "../../components/ui/Input";
-import { Button } from "../../components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 
 export default function MemberPage() {
   const { address: siweAddress } = useSIWE();

@@ -23,9 +23,11 @@
  */
 
 import { execSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolvePtauPath } from './ptau-resolve.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const circuitsRoot = path.join(__dirname, '..');
@@ -33,7 +35,6 @@ const circuitsRoot = path.join(__dirname, '..');
 // ── 配置项 ────────────────────────────────────────────────────────────────────
 const CONFIG = {
   circuitName: process.argv[2] || 'identity_commitment',
-  ptauFile: 'pot16_final.ptau',  // 使用 pot16 支持超大电路
 };
 
 /**
@@ -73,18 +74,19 @@ async function main() {
   console.log('  零知识证明可信设置（标准流程 - 两方熵贡献）');
   console.log('='.repeat(60));
   console.log(`[电路名称] ${CONFIG.circuitName}`);
-  console.log(`[PTAU 文件] ${CONFIG.ptauFile}`);
+  const { ptauPath, paramsDir, label } = resolvePtauPath(circuitsRoot);
+  console.log(`[PTAU] ${label}${process.env.ZK_PTAU_FILE ? '（来自 ZK_PTAU_FILE）' : ''}`);
+  console.log(`[路径] ${ptauPath}`);
   console.log('='.repeat(60));
 
   // 步骤 0：检查 PTAU
-  const paramsDir = path.join(circuitsRoot, 'params');
   ensureDir(paramsDir);
-  const ptauPath = path.join(paramsDir, CONFIG.ptauFile);
 
   if (!fileExists(ptauPath)) {
     console.error(`\n[错误] PTAU 文件不存在：${ptauPath}`);
-    console.error(`       请先运行：npm run ptau:generate`);
-    console.error(`       生成 pot16_final.ptau（约 268 MB）`);
+    console.error(`       将小体积 PTAU 放入 circuits/params/，或设置环境变量：`);
+    console.error(`       ZK_PTAU_FILE=pot12_final.ptau   （相对 params 的文件名）`);
+    console.error(`       或 npm run ptau:generate 生成本地 pot16_final.ptau`);
     process.exit(1);
   }
 
@@ -137,7 +139,8 @@ async function main() {
     console.log('[说明] 添加第一个参与者的随机熵，增强安全性');
     console.log('[注意] 此步骤需要生成随机数，可能需要几分钟');
     
-    const command = `npx snarkjs zkey contribute "${zkeyInitPath}" "${zkeyContrib1Path}" -name="Contributor 1" -entropy="$(openssl rand -hex 32)"`;
+    const ent1 = crypto.randomBytes(32).toString('hex');
+    const command = `npx snarkjs zkey contribute "${zkeyInitPath}" "${zkeyContrib1Path}" -name="Contributor 1" -entropy="${ent1}"`;
     const result = execCommand(command);
 
     if (!result.success) {
@@ -160,7 +163,8 @@ async function main() {
     console.log('[说明] 添加第二个参与者的随机熵，进一步增强安全性');
     console.log('[注意] 此步骤需要生成随机数，可能需要几分钟');
     
-    const command = `npx snarkjs zkey contribute "${zkeyContrib1Path}" "${zkeyContrib2Path}" -name="Contributor 2" -entropy="$(openssl rand -hex 32)"`;
+    const ent2 = crypto.randomBytes(32).toString('hex');
+    const command = `npx snarkjs zkey contribute "${zkeyContrib1Path}" "${zkeyContrib2Path}" -name="Contributor 2" -entropy="${ent2}"`;
     const result = execCommand(command);
 
     if (!result.success) {
@@ -211,14 +215,15 @@ async function main() {
   // 步骤 7：导出 Solidity 验证器合约
   const contractsDir = path.join(circuitsRoot, '..', 'contracts', 'contracts', 'verifiers');
   ensureDir(contractsDir);
-  const verifierPath = path.join(contractsDir, 'Groth16Verifier.sol');
+  const verifierPath = path.join(contractsDir, `${CONFIG.circuitName}_verifier.sol`);
 
   console.log('\n' + '='.repeat(60));
   console.log('步骤 6: 导出 Solidity 验证器合约');
   console.log('='.repeat(60));
   console.log('[说明] 生成 Solidity 验证合约，可直接部署到区块链');
-  
-  let setupCmd = `npx snarkjs zkey export solidityverifier "${zkeyFinalPath}" "${verifierPath}"`;
+  console.log(`[输出] ${path.basename(verifierPath)}`);
+
+  const setupCmd = `npx snarkjs zkey export solidityverifier "${zkeyFinalPath}" "${verifierPath}"`;
   let setupResult = execCommand(setupCmd);
 
   if (!setupResult.success) {

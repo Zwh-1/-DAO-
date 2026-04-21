@@ -1,0 +1,28 @@
+{
+  "network": "localhost",
+  "timestamp": "2026-04-20T01-20-19-276Z",
+  "deployer": "0x1Be31A94361a391bBaFB2a4CCd704F57dc04d4bb",
+  "contracts": {
+    "AntiSybilGroth16Verifier": "0x5a1f6a0D176c4823a79780F5d076A6d6ffc69a83",
+    "AnonymousClaimGroth16Verifier": "0xc7d4237266156BD8f385F03fD04733fA4401E21b",
+    "IdentityRegistry": "0x2Af24c4A03cb5d87406F5B036A6d14E9B51d6F90",
+    "IdentityCommitmentGroth16Verifier": "0x08dC361a97594aA3aD86158AB4ba5C66F2503c3d",
+    "IdentityCommitmentZK": "0x769486A9486201f34aC016C06641ADDD083e8771",
+    "AntiSybilClaimGroth16Verifier": "0x9719d28ceAea7776Cf1eCE03c1Cd79D75004E025",
+    "AntiSybilClaimZK": "0xE1a71F5d53B5241c066BbA9d5D6cD7a33A01a09B",
+    "ClaimVaultZK": "0x34e076673e34fb5637538Ff81FA5789546bCb98b",
+    "SBT": "0xF4d585B8d9fC0CEdA2afD5d85dc2700e0d1657CB",
+    "ArbitratorPool": "0xEb2893a1674805DA9A5B79D7b286357A10ee40AA",
+    "ChallengeManager": "0xA80ddc9328343354F64D5a2Aed65dF46BD52ec70",
+    "OracleManager": "0x406Cb8B89046F976D498D5ACcCA87F3204C30300",
+    "Governance": "0xc9DD5f021d0F701Ac7f27690878023D1E0a8e025",
+    "PaymentChannel": "0x159160CF47C261Ae745258fb851BD4e5eaB3E825",
+    "AnonymousClaim": "0x2E4BED9834Cd2646744C73A59B3CA54455c4EEE6",
+    "Verifier__history_anchor_verifier": "0x2af8fDCA6d3F0364dfC3FF3CC5FE53CA8Ee51958",
+    "Verifier__confidential_transfer_verifier": "0xB2eaa3479Ad047F99ea2ad7f2762819Cb90c0EdE",
+    "Verifier__multi_sig_proposal_verifier": "0x80Af0e5ed9a2AC622C512cAd37f5855d8603c108",
+    "Verifier__privacy_payment_verifier": "0xeB57aC77D7Ce63bAC1256556673353DFAE5ead51",
+    "Verifier__private_payment_verifier": "0xc1962e15349A2D775BDf7F12a889B89b237ccD1a",
+    "Verifier__reputation_verifier_verifier": "0xeF12AeBAC51EaA4157234ed14154bA537C5362cF"
+  }
+}

@@ -29,6 +29,7 @@ const targetCircuit = args.find(arg => !arg.startsWith('--'));
 const CIRCUITS = [
   'identity_commitment',
   'anti_sybil_claim',
+  'anonymous_claim',
   'anti_sybil_verifier',
   'confidential_transfer',
   'multi_sig_proposal',
@@ -47,14 +48,15 @@ function compileCircuit(circuitName) {
   
   try {
     execSync(cmd, {
-      stdio: 'pipe',  // 隐藏详细输出
+      stdio: 'inherit',
       cwd: circuitsRoot,
-      shell: true
+      shell: true,
     });
     console.log(`  ✓ 成功`);
     return true;
   } catch (error) {
-    console.error(`  ✗ 失败`);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`  ✗ 失败: ${msg}`);
     return false;
   }
 }

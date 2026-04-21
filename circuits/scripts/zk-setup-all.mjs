@@ -18,6 +18,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolvePtauPath } from './ptau-resolve.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const circuitsRoot = path.join(__dirname, '..');
@@ -25,6 +26,8 @@ const circuitsRoot = path.join(__dirname, '..');
 // ── 所有电路列表 ─────────────────────────────────────────────────────────────
 const CIRCUITS = [
   'identity_commitment',
+  'anonymous_claim',
+  'anti_sybil_claim',
   'anti_sybil_verifier',
   'history_anchor',
   'confidential_transfer',
@@ -68,19 +71,19 @@ async function main() {
   console.log(`[总耗时] 预计 ${CIRCUITS.length * 12} 分钟`);
   console.log('='.repeat(60));
 
-  // 检查 PTAU 文件
-  const paramsDir = path.join(circuitsRoot, 'params');
-  const ptauPath = path.join(paramsDir, 'pot16_final.ptau');
+  const { ptauPath, label } = resolvePtauPath(circuitsRoot);
 
   if (!fileExists(ptauPath)) {
     console.error('\n[错误] PTAU 文件不存在');
-    console.error('       请先运行：npm run ptau:generate');
-    console.error('       生成 pot16_final.ptau（约 268 MB）');
+    console.error('       将小体积 PTAU 放入 circuits/params/ 或设置 ZK_PTAU_FILE=文件名');
+    console.error('       亦可运行：npm run ptau:generate');
     process.exit(1);
   }
 
   const stats = fs.statSync(ptauPath);
-  console.log(`\n[OK] PTAU 文件：pot16_final.ptau (${(stats.size / (1024 * 1024)).toFixed(1)} MB)`);
+  console.log(
+    `\n[OK] PTAU：${label} (${(stats.size / (1024 * 1024)).toFixed(1)} MB)${process.env.ZK_PTAU_FILE ? ' [ZK_PTAU_FILE]' : ''}`
+  );
 
   // 检查编译
   let compiledCount = 0;

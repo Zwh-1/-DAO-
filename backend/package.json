@@ -4,13 +4,28 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch --env-file=.env.local src/server.js",
-    "start": "node --env-file=.env.local src/server.js"
+    "prebuild": "node scripts/prebuild-sync-abis.js",
+    "build": "node ./node_modules/vite/bin/vite.js build",
+    "dev": "node --watch --env-file=.env src/server.js",
+    "start": "node --env-file=.env dist/server.js",
+    "sync-abis": "node ../contracts/scripts/compile-and-export-abis.js",
+    "sync-abis:force": "node ../contracts/scripts/compile-and-export-abis.js --force",
+    "test": "vitest run tests/chain.roles.test.js tests/workbenchApi.test.js tests/channelRoutes.test.js tests/auth-hardening.test.js tests/aiAudit.test.js tests/production-gates.test.js",
+    "test:all": "vitest run"
   },
   "dependencies": {
+    "@zk-kit/incremental-merkle-tree": "^1.1.0",
+    "circomlibjs": "^0.1.7",
     "cors": "^2.8.5",
     "ethers": "^6.15.0",
     "express": "^4.21.2",
-    "pg": "^8.16.3"
+    "mysql2": "^3.22.0",
+    "pg": "^8.16.3",
+    "snarkjs": "^0.7.5"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2",
+    "vite": "^6.3.5",
+    "vitest": "^4.1.4"
   }
 }

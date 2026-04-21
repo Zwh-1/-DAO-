@@ -17,6 +17,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolvePtauPath } from './ptau-resolve.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const circuitsRoot = path.join(__dirname, '..');
@@ -24,7 +25,6 @@ const circuitsRoot = path.join(__dirname, '..');
 // ── 配置项 ────────────────────────────────────────────────────────────────────
 const CONFIG = {
   circuitName: process.argv[2] || 'identity_commitment',
-  ptauFile: 'pot16_final.ptau',  // 使用 pot16 支持超大电路
 };
 
 /**
@@ -64,19 +64,19 @@ async function main() {
   console.log('  零知识证明可信设置（快速版 - 跳过熵贡献）');
   console.log('='.repeat(60));
   console.log(`[电路名称] ${CONFIG.circuitName}`);
-  console.log(`[PTAU 文件] ${CONFIG.ptauFile}`);
+  const { ptauPath, paramsDir, label } = resolvePtauPath(circuitsRoot);
+  console.log(`[PTAU] ${label}${process.env.ZK_PTAU_FILE ? '（来自 ZK_PTAU_FILE）' : ''}`);
+  console.log(`[路径] ${ptauPath}`);
   console.log(`[警告] 此版本跳过熵贡献，仅适用于开发环境！`);
   console.log('='.repeat(60));
 
   // 步骤 1：检查 PTAU
-  const paramsDir = path.join(circuitsRoot, 'params');
   ensureDir(paramsDir);
-  const ptauPath = path.join(paramsDir, CONFIG.ptauFile);
 
   if (!fileExists(ptauPath)) {
     console.error(`\n[错误] PTAU 文件不存在：${ptauPath}`);
-    console.error(`       请先下载 pot15_final.ptau（约 516 MB）`);
-    console.error(`       下载地址：https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_15.ptau`);
+    console.error(`       请将小体积 PTAU 放入 circuits/params/，或设置 ZK_PTAU_FILE=文件名`);
+    console.error(`       示例：ZK_PTAU_FILE=pot12_final.ptau`);
     process.exit(1);
   }
 
@@ -151,12 +151,13 @@ async function main() {
   // 步骤 6：导出 Solidity 验证器合约
   const contractsDir = path.join(circuitsRoot, '..', 'contracts', 'contracts', 'verifiers');
   ensureDir(contractsDir);
-  const verifierPath = path.join(contractsDir, 'Groth16Verifier.sol');
+  const verifierPath = path.join(contractsDir, `${CONFIG.circuitName}_verifier.sol`);
 
   console.log('\n' + '='.repeat(60));
   console.log('步骤 4: 导出 Solidity 验证器合约');
   console.log('='.repeat(60));
-  
+  console.log(`[输出] ${path.basename(verifierPath)}`);
+
   const command = `npx snarkjs zkey export solidityverifier "${zkeyFinalPath}" "${verifierPath}"`;
   const result = execCommand(command);
 

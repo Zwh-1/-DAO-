@@ -1,100 +1,83 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { createChallenge } from "../../lib/api";
-import { toUserErrorMessage } from "../../lib/error-map";
-import {
-  requireEthAddress,
-  requireIpfsUri,
-  requireMinimum,
-  requireNonEmpty,
-  requireTxHash
-} from "../../lib/validators";
-import { RoleGuard } from "../../components/auth/RoleGuard";
-import { Input , Button  } from "../../components/ui/index";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { listMyChallenges, type ChallengeRecord } from "@/lib/api";
+import { toUserErrorMessage } from "@/lib/error-map";
+import { RoleGuard } from "@/features/governance";
+import { useWallet } from "@/features/wallet";
+import { PageTransition } from "@/components/ui/index";
+import { ChallengeList, CreateChallengeForm } from "@/features/workbench/challenger";
 
 export default function ChallengerPage() {
-  const [form, setForm] = useState({
-    proposalId: "101",
-    reasonCode: "INVALID_EVIDENCE",
-    evidenceSnapshot: "ipfs://QmSecondary",
-    txHash: "0x1111111111111111111111111111111111111111111111111111111111111111",
-    challenger: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-    stakeAmount: "150"
-  });
-  const [result, setResult] = useState<string>("");
-  const [formError, setFormError] = useState("");
+  const { address, isConnected } = useWallet();
+  const [challenges, setChallenges] = useState<ChallengeRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault();
-    setFormError("");
-    try {
-      requireNonEmpty(form.proposalId, "proposalId");
-      requireNonEmpty(form.reasonCode, "reasonCode");
-      requireIpfsUri(form.evidenceSnapshot, "evidenceSnapshot");
-      requireTxHash(form.txHash, "txHash");
-      requireEthAddress(form.challenger, "challenger");
-      requireMinimum(Number(form.stakeAmount), 100, "stakeAmount");
-      const data = await createChallenge({
-        ...form,
-        stakeAmount: Number(form.stakeAmount)
-      });
-      setResult(JSON.stringify(data, null, 2));
-    } catch (error) {
-      setFormError(toUserErrorMessage(error));
+  const refresh = useCallback(async () => {
+    if (!address) {
+      setChallenges([]);
+      setError(null);
+      return;
     }
-  }
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await listMyChallenges(address);
+      setChallenges(r.challenges ?? []);
+    } catch (e) {
+      setChallenges([]);
+      setError(toUserErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [address]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   return (
     <RoleGuard required="challenger">
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-      <section className="card">
-        <h1 className="text-xl font-bold text-primary">异议挑战者界面</h1>
-        <p className="mt-2 section-desc">挑战者需提交链上质押交易哈希并满足最低质押额度（需登录）。</p>
-      </section>
+      <PageTransition>
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+        <section className="card">
+          <h1 className="text-xl font-bold text-primary">异议挑战者工作台</h1>
+          <p className="mt-2 section-desc">
+            发起挑战需登录并具备挑战者角色；质押与链上哈希由您本地填写后提交后端登记。
+          </p>
+          <div className="mt-4 flex flex-wrap gap-4 text-sm">
+            <Link href="/challenger/challenges" className="font-semibold text-primary underline">
+              我的挑战
+            </Link>
+            <Link href="/challenger/rewards" className="font-semibold text-primary underline">
+              奖励查询
+            </Link>
+          </div>
+        </section>
 
-      <section className="card">
-        <form onSubmit={onSubmit} className="space-y-3">
-          <Input
-            label="Proposal ID"
-            value={form.proposalId}
-            onChange={(e) => setForm({ ...form, proposalId: e.target.value })}
-          />
-          <Input
-            label="Reason Code"
-            value={form.reasonCode}
-            onChange={(e) => setForm({ ...form, reasonCode: e.target.value })}
-          />
-          <Input
-            label="Evidence Snapshot CID"
-            value={form.evidenceSnapshot}
-            onChange={(e) => setForm({ ...form, evidenceSnapshot: e.target.value })}
-          />
-          <Input label="Tx Hash" value={form.txHash} onChange={(e) => setForm({ ...form, txHash: e.target.value })} />
-          <Input
-            label="Challenger Address"
-            value={form.challenger}
-            onChange={(e) => setForm({ ...form, challenger: e.target.value })}
-          />
-          <Input
-            label="Stake Amount"
-            value={form.stakeAmount}
-            onChange={(e) => setForm({ ...form, stakeAmount: e.target.value })}
-          />
-          <Button type="submit" variant="danger">
-            发起挑战
-          </Button>
-        </form>
-      </section>
+        <section className="card">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="section-title">挑战记录</h2>
+            <button
+              type="button"
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-primary hover:bg-surface/80"
+              onClick={() => refresh()}
+              disabled={!isConnected || !address}
+            >
+              刷新
+            </button>
+          </div>
+          {!isConnected && <p className="text-sm text-steel">连接钱包后可加载与您地址关联的挑战记录。</p>}
+          {isConnected && address && (
+            <ChallengeList challenges={challenges} loading={loading} error={error} />
+          )}
+        </section>
 
-      <pre className="result-pre">
-        {result || "接口返回结果会显示在这里"}
-      </pre>
-
-      {formError && (
-        <section className="error-banner">{formError}</section>
-      )}
-    </div>
+        <CreateChallengeForm defaultChallenger={address} onSuccess={() => refresh()} />
+      </div>
+      </PageTransition>
     </RoleGuard>
   );
 }

@@ -15,6 +15,7 @@
  */
 
 import { execSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -105,7 +106,8 @@ async function main() {
   console.log('[注意] 此步骤需要生成随机数，可能需要几分钟');
   
   const contrib1Path = path.join(paramsDir, `pot${CONFIG.power}_0001.ptau`);
-  const command2 = `npx snarkjs powersoftau contribute "${initPath}" "${contrib1Path}" -name="Contributor 1" -entropy="$(openssl rand -hex 32)"`;
+  const ent1 = crypto.randomBytes(32).toString('hex');
+  const command2 = `npx snarkjs powersoftau contribute "${initPath}" "${contrib1Path}" -name="Contributor 1" -entropy="${ent1}"`;
   const result2 = execCommand(command2);
 
   if (!result2.success) {
@@ -122,7 +124,8 @@ async function main() {
   console.log('[说明] 添加第二个参与者的随机熵，增强安全性');
   
   const contrib2Path = path.join(paramsDir, `pot${CONFIG.power}_0002.ptau`);
-  const command3 = `npx snarkjs powersoftau contribute "${contrib1Path}" "${contrib2Path}" -name="Contributor 2" -entropy="$(openssl rand -hex 32)"`;
+  const ent2 = crypto.randomBytes(32).toString('hex');
+  const command3 = `npx snarkjs powersoftau contribute "${contrib1Path}" "${contrib2Path}" -name="Contributor 2" -entropy="${ent2}"`;
   const result3 = execCommand(command3);
 
   if (!result3.success) {

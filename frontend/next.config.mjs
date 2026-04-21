@@ -1,4 +1,15 @@
 /** @type {import('next').NextConfig} */
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/** 后端 origin，与 NEXT_PUBLIC_BACKEND_URL、lib/api/client.ts 一致（勿尾斜杠） */
+const backendOrigin = (
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3010"
+).replace(/\/$/, "");
+
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
@@ -8,20 +19,52 @@ const nextConfig = {
   // 将服务器端环境变量暴露给浏览器端
   env: {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3010",
+    NEXT_PUBLIC_DAPP_URL: process.env.NEXT_PUBLIC_DAPP_URL ?? "http://localhost:3000",
+    NEXT_PUBLIC_CHAIN_ID: process.env.NEXT_PUBLIC_CHAIN_ID ?? "887766",
   },
 
-  // 开发环境代理：将 /v1 请求转发到后端，避免 CORS 跨域问题
+  // 将浏览器侧 /v1/* 转发到后端（本地与部署均可通过 NEXT_PUBLIC_BACKEND_URL 指向真实 API）
   async rewrites() {
     return [
       {
-        source: '/v1/:path*',
-        destination: 'http://localhost:3010/v1/:path*', // 代理到后端服务
+        source: "/v1/:path*",
+        destination: `${backendOrigin}/v1/:path*`,
       },
     ];
   },
 
-  // Webpack 配置：忽略系统文件，解决 Windows 下 Watchpack 扫描错误
+  /** 旧钱包路由 → 个人资料页（内含钱包组件） */
+  async redirects() {
+    return [
+      {
+        source: "/wallet",
+        destination: "/member/profile",
+        permanent: true,
+      },
+      {
+        source: "/member/profile/wallet",
+        destination: "/member/profile",
+        permanent: true,
+      },
+    ];
+  },
+
+  // Webpack 配置：路径别名和系统文件忽略
   webpack: (config, { isServer, dev }) => {
+    // 配置路径别名 @/
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': __dirname,
+      '@components': path.join(__dirname, 'components'),
+      '@hooks': path.join(__dirname, 'hooks'),
+      '@lib': path.join(__dirname, 'lib'),
+      '@store': path.join(__dirname, 'store'),
+      '@utils': path.join(__dirname, 'utils'),
+      '@types': path.join(__dirname, 'types'),
+      '@workers': path.join(__dirname, 'workers'),
+      '@app': path.join(__dirname, 'app'),
+    };
+
     if (dev && !isServer) {
       // 配置 watchOptions.ignored 忽略系统文件和目录
       config.watchOptions = {
@@ -40,6 +83,7 @@ const nextConfig = {
         ],
       };
     }
+
     return config;
   },
 

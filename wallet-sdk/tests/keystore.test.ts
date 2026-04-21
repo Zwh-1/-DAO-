@@ -16,8 +16,9 @@ function memoryStorage() {
 describe("EmbeddedKeystore accounts", () => {
   it("creates wallet and derives next account", async () => {
     const ks = new EmbeddedKeystore(memoryStorage(), "test_key");
-    const first = await ks.create("pass123456");
+    const { address: first, mnemonic } = await ks.create("pass123456");
     expect(first.startsWith("0x")).toBe(true);
+    expect(mnemonic.split(/\s+/).length).toBeGreaterThanOrEqual(12);
     const second = await ks.deriveNextAccount("pass123456");
     expect(second.startsWith("0x")).toBe(true);
     expect(second.toLowerCase()).not.toBe(first.toLowerCase());

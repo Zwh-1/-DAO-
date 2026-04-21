@@ -23,21 +23,16 @@ contract MaliciousClaim {
         b[1] = [uint256(0), 0];
         uint256[2] memory c = [uint256(0), 0];
         
-        // 构造 public signals（13 个参数）
-        uint256[] memory pubSignals = new uint256[](13);
-        pubSignals[0] = 0; // merkle_root
+        // 构造 public signals（8 个，与 anti_sybil_verifier.circom 一致）
+        uint256[] memory pubSignals = new uint256[](8);
+        pubSignals[0] = 0; // merkle_root（须与 vault.expectedMerkleRoot 一致）
         pubSignals[1] = 12345; // identity_commitment
         pubSignals[2] = uint256(keccak256(abi.encodePacked("malicious"))); // nullifier
-        pubSignals[3] = 0; // min_level
-        pubSignals[4] = 10; // user_level
-        pubSignals[5] = 1000; // min_amount
-        pubSignals[6] = 200000; // max_amount
-        pubSignals[7] = TEST_AMOUNT; // claim_amount
-        pubSignals[8] = uint256(block.timestamp); // claim_ts
-        pubSignals[9] = 0; // ts_start
-        pubSignals[10] = uint256(block.timestamp) + 86400; // ts_end
-        pubSignals[11] = 1; // airdrop_project_id
-        pubSignals[12] = 999; // merkle_leaf
+        pubSignals[3] = 10; // user_level
+        pubSignals[4] = TEST_AMOUNT; // claim_amount
+        pubSignals[5] = uint256(block.timestamp); // claim_ts
+        pubSignals[6] = 0; // parameter_hash（须与 vault.expectedParameterHash 一致）
+        pubSignals[7] = 999; // merkle_leaf
         
         // 第一次调用（会失败，因为证明无效，但这足以测试重入防护）
         try vault.claimAirdrop(a, b, c, pubSignals, "") {
@@ -57,20 +52,15 @@ contract MaliciousClaim {
         b[1] = [uint256(0), 0];
         uint256[2] memory c = [uint256(0), 0];
         
-        uint256[] memory pubSignals = new uint256[](13);
+        uint256[] memory pubSignals = new uint256[](8);
         pubSignals[0] = 0;
         pubSignals[1] = 12345;
         pubSignals[2] = uint256(keccak256(abi.encodePacked("malicious2")));
-        pubSignals[3] = 0;
-        pubSignals[4] = 10;
-        pubSignals[5] = 1000;
-        pubSignals[6] = 200000;
-        pubSignals[7] = TEST_AMOUNT;
-        pubSignals[8] = uint256(block.timestamp);
-        pubSignals[9] = 0;
-        pubSignals[10] = uint256(block.timestamp) + 86400;
-        pubSignals[11] = 1;
-        pubSignals[12] = 999;
+        pubSignals[3] = 10;
+        pubSignals[4] = TEST_AMOUNT;
+        pubSignals[5] = uint256(block.timestamp);
+        pubSignals[6] = 0;
+        pubSignals[7] = 999;
         
         // 尝试重入（应该被 ReentrancyGuard 阻止）
         vault.claimAirdrop(a, b, c, pubSignals, "");

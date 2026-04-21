@@ -47,7 +47,7 @@ export function parseGroth16ProofForVault(proof) {
   return { a, b, c };
 }
 
-export async function submitClaimOnchain({ proof, publicSignals }) {
+export async function submitClaimOnchain({ proof, publicSignals, signature }) {
   const instance = getRelay();
   if (!instance) {
     return {
@@ -57,15 +57,21 @@ export async function submitClaimOnchain({ proof, publicSignals }) {
   }
 
   const { a, b, c } = parseGroth16ProofForVault(proof);
-  if (!Array.isArray(publicSignals) || publicSignals.length < 11) {
-    const err = new Error("publicSignals must have 11 entries (anti_sybil_verifier public outputs)");
+  if (!Array.isArray(publicSignals) || publicSignals.length !== 8) {
+    const err = new Error("publicSignals must have exactly 8 entries (anti_sybil_verifier public outputs)");
     err.code = "INVALID_PUBLIC_SIGNALS";
+    throw err;
+  }
+
+  if (typeof signature !== "string" || !signature.startsWith("0x") || signature.length !== 132) {
+    const err = new Error("signature must be 0x-prefixed 65-byte hex (132 chars) for claimAirdrop EIP-712");
+    err.code = "INVALID_CLAIM_SIGNATURE";
     throw err;
   }
 
   const pub = publicSignals.map((x) => BigInt(x));
 
-  const tx = await instance.contract.claimAirdrop(a, b, c, pub);
+  const tx = await instance.contract.claimAirdrop(a, b, c, pub, signature);
   const receipt = await tx.wait();
   return {
     mode: "enabled",

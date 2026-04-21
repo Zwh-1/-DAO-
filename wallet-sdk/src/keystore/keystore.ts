@@ -76,9 +76,12 @@ export class EmbeddedKeystore {
     return phrase;
   }
 
-  async create(password: string): Promise<string> {
+  /**
+   * 创建新钱包。返回的 mnemonic 仅用于向用户展示一次（备份），与持久化策略无关。
+   */
+  async create(password: string): Promise<{ address: string; mnemonic: string }> {
     const wallet = HDNodeWallet.createRandom();
-    const mnemonic = wallet.mnemonic?.phrase || null;
+    const mnemonic = wallet.mnemonic?.phrase || "";
     const state: EmbeddedState = {
       accounts: [{ address: wallet.address, privateKey: wallet.privateKey }],
       selectedAddress: wallet.address,
@@ -86,7 +89,7 @@ export class EmbeddedKeystore {
       nextAccountIndex: 1
     };
     await this.saveStateEncrypted(password, state);
-    return wallet.address;
+    return { address: wallet.address, mnemonic };
   }
 
   async importMnemonic(password: string, mnemonic: string): Promise<string> {

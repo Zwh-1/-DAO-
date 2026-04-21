@@ -53,14 +53,21 @@ describe("Governance (phase 6)", function () {
       await pool.connect(arb2).register({ value: ethers.parseEther("0.02") });
       await pool.connect(arb3).register({ value: ethers.parseEther("0.02") });
 
+      const Registry = await ethers.getContractFactory("IdentityRegistry");
+      const registry = await Registry.deploy();
+      await registry.waitForDeployment();
+      const SBT = await ethers.getContractFactory("SBT");
+      const sbt = await SBT.deploy(await registry.getAddress());
+      await sbt.waitForDeployment();
+
       const CM = await ethers.getContractFactory("ChallengeManager");
-      cm = await CM.deploy(await pool.getAddress());
+      cm = await CM.deploy(await pool.getAddress(), await sbt.getAddress(), await registry.getAddress());
       await cm.waitForDeployment();
     });
 
     async function openAndCommit(vote1 = 1, vote2 = 1) {
       // 1. 挑战者开启挑战
-      await cm.connect(challenger).openChallenge(PROPOSAL_ID, { value: STAKE });
+      await cm.connect(challenger).openChallenge(PROPOSAL_ID, await arb1.getAddress(), { value: STAKE });
 
       // 2. 进入 Commit 阶段
       await cm.beginCommit(PROPOSAL_ID);
@@ -131,7 +138,7 @@ describe("Governance (phase 6)", function () {
 
     it("challenger loses: stake goes to arbitrator reward pool", async function () {
       // 双方均投"反对挑战"（vote=0）
-      await cm.connect(challenger).openChallenge(PROPOSAL_ID + 1n, { value: STAKE });
+      await cm.connect(challenger).openChallenge(PROPOSAL_ID + 1n, await arb1.getAddress(), { value: STAKE });
       await cm.beginCommit(PROPOSAL_ID + 1n);
 
       const vote = 0;
@@ -166,7 +173,7 @@ describe("Governance (phase 6)", function () {
     });
 
     it("forceResolve: owner can force outcome", async function () {
-      await cm.connect(challenger).openChallenge(PROPOSAL_ID + 2n, { value: STAKE });
+      await cm.connect(challenger).openChallenge(PROPOSAL_ID + 2n, await arb1.getAddress(), { value: STAKE });
       await cm.beginCommit(PROPOSAL_ID + 2n);
 
       await cm.connect(owner).forceResolve(PROPOSAL_ID + 2n, true);

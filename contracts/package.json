@@ -4,14 +4,29 @@
   "private": true,
   "scripts": {
     "compile": "hardhat compile",
+    "compile-and-export": "node scripts/compile-and-export-abis.js",
     "test": "hardhat test",
-    "deploy:local": "hardhat run scripts/deploy.js --network localhost"
+    "deploy": "hardhat run scripts/deploy.mjs",
+    "deploy:local": "hardhat run scripts/deploy.mjs --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.mjs --network sepolia",
+    "deploy:geth": "hardhat run scripts/deploy.mjs --network geth",
+    "deploy:polygon": "hardhat run scripts/deploy.mjs --network polygon",
+    "deploy:mumbai": "hardhat run scripts/deploy.mjs --network mumbai",
+    "deploy:arbitrum": "hardhat run scripts/deploy.mjs --network arbitrum",
+    "deploy:bsc": "hardhat run scripts/deploy.mjs --network bsc",
+    "sync-addresses": "node scripts/sync-contract-addresses.js",
+    "sync-addresses:geth": "node scripts/sync-contract-addresses.js geth",
+    "sync-addresses:local": "node scripts/sync-contract-addresses.js localhost",
+    "sync-addresses:sepolia": "node scripts/sync-contract-addresses.js sepolia",
+    "export-abis": "node scripts/export-abis.js",
+    "export-abi": "node scripts/export-abis.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat": "^2.24.3"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.9.0"
+    "@openzeppelin/contracts": "^4.9.0",
+    "dotenv": "^17.4.2"
   }
 }

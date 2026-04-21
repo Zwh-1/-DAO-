@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { RoleGuard } from "../../components/auth/RoleGuard";
-import { Input, Button } from "../../components/ui/index";
+import { RoleGuard } from "@/features/governance";
+import { Input, Button, PageTransition } from "@/components/ui/index";
+import { getOracleReportById, oracleSignReport, submitOracleReport } from "@/lib/api";
+import { toUserErrorMessage } from "@/lib/error-map";
 
 interface ReportStatus {
   claimId: string;
@@ -44,22 +46,12 @@ export default function OraclePage() {
     }
 
     try {
-      const res = await fetch("/v1/oracle/report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reportId, claimId, ipfsCid }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSubmitOk(true);
-        setSubmitMsg(`报告 ${reportId} 已提交，当前签名数：${data.signatures ?? 1}`);
-      } else {
-        setSubmitOk(false);
-        setSubmitMsg(data.error ?? "提交失败");
-      }
-    } catch {
+      const data = await submitOracleReport({ reportId, claimId, ipfsCid });
+      setSubmitOk(true);
+      setSubmitMsg(`报告 ${reportId} 已提交，当前签名数：${data.signatures ?? 1}`);
+    } catch (err) {
       setSubmitOk(false);
-      setSubmitMsg("网络错误，请检查后端服务");
+      setSubmitMsg(toUserErrorMessage(err));
     }
   }
 
@@ -75,22 +67,12 @@ export default function OraclePage() {
     }
 
     try {
-      const res = await fetch("/v1/oracle/sign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reportId: signReportId }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSignOk(true);
-        setSignMsg(`签名成功，当前签名数：${data.signatures}${data.finalized ? "（已终结 ✓）" : ""}`);
-      } else {
-        setSignOk(false);
-        setSignMsg(data.error ?? "签名失败");
-      }
-    } catch {
+      const data = await oracleSignReport({ reportId: signReportId });
+      setSignOk(true);
+      setSignMsg(`签名成功，当前签名数：${data.signatures}${data.finalized ? "（已终结 ✓）" : ""}`);
+    } catch (err) {
       setSignOk(false);
-      setSignMsg("网络错误");
+      setSignMsg(toUserErrorMessage(err));
     }
   }
 
@@ -105,15 +87,10 @@ export default function OraclePage() {
     }
 
     try {
-      const res = await fetch(`/v1/oracle/report/${encodeURIComponent(queryId)}`);
-      const data = await res.json();
-      if (res.ok) {
-        setReportStatus(data);
-      } else {
-        setQueryMsg(data.error ?? "未找到报告");
-      }
-    } catch {
-      setQueryMsg("网络错误");
+      const data = (await getOracleReportById(queryId.trim())) as unknown as ReportStatus;
+      setReportStatus(data);
+    } catch (err) {
+      setQueryMsg(toUserErrorMessage(err));
     }
   }
 
@@ -125,6 +102,7 @@ export default function OraclePage() {
 
   return (
     <RoleGuard required="oracle">
+    <PageTransition>
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
       <section className="card">
         <h1 className="text-2xl font-bold text-primary">预言机工作台</h1>
@@ -242,6 +220,7 @@ export default function OraclePage() {
         </div>
       )}
     </div>
+    </PageTransition>
     </RoleGuard>
   );
 }

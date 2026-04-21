@@ -1,4 +1,4 @@
-// File: D:\Desktop\基于零知识证明与 DAO 治理的去中心化互助平台设计与实现\trustaid-platform\frontend\app\arbitrator\page.tsx
+// File: D:\Desktop\projects\trustaid-platform\frontend\app\arbitrator\page.tsx
 import * as entry from '../../../../app/arbitrator/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
