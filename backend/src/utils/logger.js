@@ -27,6 +27,7 @@
  */
 
 import { appendFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 
 /**
  * 日志级别枚举
@@ -44,13 +45,20 @@ const LogLevel = {
  */
 const currentLevel = LogLevel[process.env.LOG_LEVEL] || LogLevel.INFO;
 
-/** 设置 LOG_FILE 后，ERROR/WARN 除控制台外追加写入该路径（便于容器侧车采集） */
-const LOG_FILE_PATH = process.env.LOG_FILE || '';
+/** 设置 LOG_FILE 后，日志按分类写入对应文件 */
+const LOG_FILE_PATH  = process.env.LOG_FILE || '';
+const _logDir        = LOG_FILE_PATH ? dirname(LOG_FILE_PATH) : '';
+/** ERROR 级别单独归档 */
+const ERROR_LOG_PATH = _logDir ? join(_logDir, 'error.log')  : '';
+/** HTTP 访问日志（独立于主日志级别，类似 nginx access.log） */
+const HTTP_LOG_PATH  = _logDir ? join(_logDir, 'http.log')   : '';
+/** 安全审计日志 */
+const AUDIT_LOG_PATH = _logDir ? join(_logDir, 'audit.log')  : '';
 
-function appendLogFileLine(line) {
-  if (!LOG_FILE_PATH) return;
-  appendFile(LOG_FILE_PATH, `${line}\n`, { flag: 'a' }).catch((err) => {
-    console.error('[logger] LOG_FILE 写入失败:', err.message);
+function appendToFile(filePath, line) {
+  if (!filePath) return;
+  appendFile(filePath, `${line}\n`, { flag: 'a' }).catch((err) => {
+    console.error('[logger] 日志写入失败:', filePath, err.message);
   });
 }
 
@@ -156,7 +164,7 @@ function deepMask(obj) {
  * @param {Object} meta - 元数据
  * @returns {string} 格式化后的日志字符串
  */
-function formatLog(level, message, meta = {}) {
+function formatLog(level, message, meta = {}, category = 'app') {
   const timestamp = new Date().toISOString();
   const service = 'trustaid-backend';
   
@@ -168,6 +176,7 @@ function formatLog(level, message, meta = {}) {
     timestamp,
     level,
     service,
+    category,
     message,
     ...maskedMeta,
   };
@@ -182,23 +191,33 @@ function formatLog(level, message, meta = {}) {
  * @param {string} message - 日志消息
  * @param {Object} meta - 元数据（可选）
  */
-function log(level, message, meta = {}) {
-  // 检查日志级别是否允许输出
+function log(level, message, meta = {}, category = 'app') {
   if (LogLevel[level] > currentLevel) {
     return;
   }
   
-  const formattedLog = formatLog(level, message, meta);
+  // ERROR 级别自动提取 Error 对象堆栈
+  const extraMeta = {};
+  if (level === 'ERROR' && meta.error instanceof Error && meta.error.stack) {
+    extraMeta.stack = meta.error.stack;
+  }
   
-  // 根据级别输出到不同流
-  switch (level) {
-    case 'ERROR':
-    case 'WARN':
-      console.error(formattedLog);
-      appendLogFileLine(formattedLog);
-      break;
-    default:
-      console.log(formattedLog);
+  const formattedLog = formatLog(level, message, { ...meta, ...extraMeta }, category);
+  
+  // 控制台输出（ERROR/WARN → stderr，其余 → stdout）
+  if (level === 'ERROR') {
+    console.error(formattedLog);
+  } else if (level === 'WARN') {
+    console.warn(formattedLog);
+  } else {
+    console.log(formattedLog);
+  }
+  
+  // 合并日志（全级别写入文件，便于完整追溯）
+  appendToFile(LOG_FILE_PATH, formattedLog);
+  // ERROR 单独归档
+  if (level === 'ERROR') {
+    appendToFile(ERROR_LOG_PATH, formattedLog);
   }
 }
 
@@ -214,8 +233,8 @@ function log(level, message, meta = {}) {
  * @param {string} message - 错误消息
  * @param {Object} meta - 元数据（如 error.stack）
  */
-export function error(message, meta = {}) {
-  log('ERROR', message, meta);
+export function error(message, meta = {}, category = 'app') {
+  log('ERROR', message, meta, category);
 }
 
 /**
@@ -229,8 +248,8 @@ export function error(message, meta = {}) {
  * @param {string} message - 警告消息
  * @param {Object} meta - 元数据
  */
-export function warn(message, meta = {}) {
-  log('WARN', message, meta);
+export function warn(message, meta = {}, category = 'app') {
+  log('WARN', message, meta, category);
 }
 
 /**
@@ -244,8 +263,8 @@ export function warn(message, meta = {}) {
  * @param {string} message - 信息消息
  * @param {Object} meta - 元数据
  */
-export function info(message, meta = {}) {
-  log('INFO', message, meta);
+export function info(message, meta = {}, category = 'app') {
+  log('INFO', message, meta, category);
 }
 
 /**
@@ -261,8 +280,8 @@ export function info(message, meta = {}) {
  * @param {string} message - 调试消息
  * @param {Object} meta - 元数据
  */
-export function debug(message, meta = {}) {
-  log('DEBUG', message, meta);
+export function debug(message, meta = {}, category = 'app') {
+  log('DEBUG', message, meta, category);
 }
 
 /**
@@ -280,10 +299,13 @@ export function debug(message, meta = {}) {
  */
 export function audit(operation, operator, details = {}) {
   const auditLog = {
-    type: 'SECURITY_AUDIT',
     timestamp: new Date().toISOString(),
+    level: 'AUDIT',
+    service: 'trustaid-backend',
+    category: 'audit',
+    type: 'SECURITY_AUDIT',
     operation,
-    operator: maskValue(operator), // 强制脱敏
+    operator: maskValue(operator),
     details: deepMask(details),
     outcome: details.success ? 'SUCCESS' : 'FAILURE',
   };
@@ -291,7 +313,54 @@ export function audit(operation, operator, details = {}) {
   // 审计日志始终输出（不受级别限制）
   const line = JSON.stringify(auditLog);
   console.log(line);
-  appendLogFileLine(line);
+  appendToFile(LOG_FILE_PATH, line);
+  appendToFile(AUDIT_LOG_PATH, line);
+}
+
+/**
+ * HTTP 访问日志
+ *
+ * 5xx → ERROR，4xx → WARN，其余 → INFO
+ * 访问记录始终写入 http.log（独立于 LOG_LEVEL，类似 nginx access.log）
+ *
+ * @param {string} method - HTTP 方法
+ * @param {string} url - 请求路径
+ * @param {number} status - 响应状态码
+ * @param {number} duration - 耗时（ms）
+ * @param {Object} [meta] - 扩展字段（ip、uid 等，自动脱敏）
+ */
+export function httpLog(method, url, status, duration, meta = {}) {
+  const level = status >= 500 ? 'ERROR' : status >= 400 ? 'WARN' : 'INFO';
+
+  const entry = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level,
+    service: 'trustaid-backend',
+    category: 'http',
+    method,
+    url,
+    status,
+    duration: `${duration}ms`,
+    ...deepMask(meta),
+  });
+
+  // 控制台仅输出达到当前级别的日志
+  if (LogLevel[level] <= currentLevel) {
+    if (level === 'ERROR') console.error(entry);
+    else if (level === 'WARN') console.warn(entry);
+    else console.log(entry);
+  }
+
+  // HTTP 访问日志始终写入 http.log（不受 LOG_LEVEL 过滤）
+  appendToFile(HTTP_LOG_PATH, entry);
+  // 合并日志（按 LOG_LEVEL 过滤）
+  if (LogLevel[level] <= currentLevel) {
+    appendToFile(LOG_FILE_PATH, entry);
+  }
+  // 错误单独归档
+  if (level === 'ERROR') {
+    appendToFile(ERROR_LOG_PATH, entry);
+  }
 }
 
 /**
@@ -313,7 +382,7 @@ export function zkpLog(circuitName, operation, success, duration) {
     success,
     duration: `${duration}ms`,
     // 注意：不记录 publicSignals 或 proof，防止信息泄露
-  });
+  }, 'zkp');
 }
 
 /**
@@ -330,11 +399,11 @@ export function performanceLog(operation, startTime) {
     warn(`[性能] ${operation} 耗时过长`, {
       duration: `${duration}ms`,
       threshold: '1000ms',
-    });
+    }, 'perf');
   } else {
     debug(`[性能] ${operation}`, {
       duration: `${duration}ms`,
-    });
+    }, 'perf');
   }
 }
 
@@ -362,9 +431,9 @@ export function memoryUsage(label) {
     warn('[内存] 堆内存使用率过高', {
       ...memoryInfo,
       usagePercent: `${heapUsagePercent.toFixed(2)}%`,
-    });
+    }, 'system');
   } else {
-    debug('[内存] 内存使用情况', memoryInfo);
+    debug('[内存] 内存使用情况', memoryInfo, 'system');
   }
   
   return memoryInfo;

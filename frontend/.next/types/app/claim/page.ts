@@ -1,8 +1,8 @@
-// File: D:\Desktop\projects\trustaid-platform\frontend\app\claim\page.tsx
-import * as entry from '../../../../app/claim/page.js'
+// File: D:\Desktop\projects\trustaid-platform\frontend\src\app\claim\page.tsx
+import * as entry from '../../../../src/app/claim/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
-type TEntry = typeof import('../../../../app/claim/page.js')
+type TEntry = typeof import('../../../../src/app/claim/page.js')
 
 // Check that the entry is a valid entry
 checkFields<Diff<{

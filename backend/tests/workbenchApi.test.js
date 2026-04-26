@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Smoke tests for workbench-related routes (challenge list, oracle reports list, guardian blacklist).
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";

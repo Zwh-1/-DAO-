@@ -17,6 +17,7 @@ contract Governance {
     error AlreadyExecuted();
     error NoVotingPower();
     error TargetNotAllowed();
+    error CannotDelegateToSelf();
 
     enum ProposalState { Pending, Active, Succeeded, Defeated, Queued, Executed, Cancelled }
 
@@ -48,6 +49,9 @@ contract Governance {
     uint256 private _nextProposalId = 1;
     mapping(uint256 => Proposal)                       public proposals;
     mapping(uint256 => mapping(address => bool))       public hasVoted;
+    // 委托投票权
+    mapping(address => address)                        public delegatedTo;     // from => to
+    mapping(address => uint256)                        public delegatedWeight; // to => 累计委托权重
 
     event ProposalCreated(uint256 indexed id, address indexed proposer, string description);
     event VoteCast(uint256 indexed id, address indexed voter, uint8 support, uint256 weight);
@@ -55,6 +59,7 @@ contract Governance {
     event ProposalExecuted(uint256 indexed id);
     event ProposalCancelled(uint256 indexed id);
     event TargetAllowed(address indexed target, bool allowed);
+    event DelegateChanged(address indexed from, address indexed oldDelegate, address indexed newDelegate);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "not owner");
@@ -69,7 +74,44 @@ contract Governance {
         allowedTargets[msg.sender] = true;
     }
 
-    // ── 权重管理（去中心化） ───────────────────────────────────────────────
+    // ── 委托投票权 ──────────────────────────────────────────────────────
+
+    /**
+     * @notice 委托投票权给指定地址
+     * @dev    委托后前端对豱 proof 可绑定 delegate_vote_weight.circom 验证
+     * @param to 受委托地址（不能是自身）
+     */
+    function delegate(address to) external {
+        if (to == msg.sender) revert CannotDelegateToSelf();
+
+        address oldDelegate = delegatedTo[msg.sender];
+        uint256 myWeight = getVotingWeight(msg.sender);
+
+        // 撤销旧委托
+        if (oldDelegate != address(0) && myWeight > 0) {
+            if (delegatedWeight[oldDelegate] >= myWeight) {
+                delegatedWeight[oldDelegate] -= myWeight;
+            }
+        }
+
+        delegatedTo[msg.sender] = to;
+
+        // 新增委托
+        if (to != address(0) && myWeight > 0) {
+            delegatedWeight[to] += myWeight;
+        }
+
+        emit DelegateChanged(msg.sender, oldDelegate, to);
+    }
+
+    /**
+     * @notice 获取地址有效投票权（自身权重 + 委托收入）
+     */
+    function getEffectiveWeight(address voter) public view returns (uint256) {
+        return getVotingWeight(voter) + delegatedWeight[voter];
+    }
+
+    // ── 权重管理（去中心化） ──────────────────────────────────────────────────
 
     /**
      * @dev 自动计算投票权重（基于 SBT 信用分与等级）
@@ -135,8 +177,8 @@ contract Governance {
         if (block.timestamp > p.endTime)     revert ProposalNotActive();
         if (hasVoted[id][msg.sender])        revert AlreadyVoted();
 
-        // 自动计算投票权重（去中心化核心）
-        uint256 w = getVotingWeight(msg.sender);
+        // 自动计算有效投票权重（含委托收入）
+        uint256 w = getEffectiveWeight(msg.sender);
         if (w == 0) revert NoVotingPower();
 
         hasVoted[id][msg.sender] = true;

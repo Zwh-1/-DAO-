@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+﻿import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   auditClaimProposal,
   sanitizeClaimBodyForAudit,
-} from "../src/services/aiAudit.service.js";
+} from "../src/services/ai/aiAudit.service.js";
 
 describe("aiAudit.service", () => {
   afterEach(() => {

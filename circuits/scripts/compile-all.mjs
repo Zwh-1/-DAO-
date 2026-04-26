@@ -36,7 +36,12 @@ const CIRCUITS = [
   'privacy_payment',
   'reputation_verifier',
   'history_anchor',
-  'private_payment'
+  'private_payment',
+  // 治理 / 审计模块
+  'delegate_vote_weight',
+  'anonymous_vote',
+  'fraud_detection',
+  'arb_commit_zk',
 ];
 
 // ── 主函数 ───────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 生产闸门：无链中继时多签治理不得返回假成功
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";

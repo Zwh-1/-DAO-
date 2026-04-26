@@ -16,18 +16,21 @@
  *   - 所有 ABI 均从合约文件手动提取，确保与链上合约一致
  */
 
-import AnonymousClaimABI from './AnonymousClaim.abi.json' with { type: 'json' };
-import AntiSybilClaimZKABI from './AntiSybilClaimZK.abi.json' with { type: 'json' };
-import ArbitratorPoolABI from './ArbitratorPool.abi.json' with { type: 'json' };
-import ChallengeManagerABI from './ChallengeManager.abi.json' with { type: 'json' };
-import ClaimVaultABI from './ClaimVault.abi.json' with { type: 'json' };
-import ClaimVaultZKABI from './ClaimVaultZK.abi.json' with { type: 'json' };
-import GovernanceABI from './Governance.abi.json' with { type: 'json' };
-import Groth16VerifierABI from './Groth16Verifier.abi.json' with { type: 'json' };
-import OracleManagerABI from './OracleManager.abi.json' with { type: 'json' };
-import PaymentChannelABI from './PaymentChannel.abi.json' with { type: 'json' };
-import PlatformRoleRegistryABI from './PlatformRoleRegistry.abi.json' with { type: 'json' };
-import SBTABI from './SBT.abi.json' with { type: 'json' };
+import AnonymousClaimABI from './AnonymousClaim.abi.json' assert { type: 'json' };
+import AntiSybilClaimZKABI from './AntiSybilClaimZK.abi.json' assert { type: 'json' };
+import ArbitratorPoolABI from './ArbitratorPool.abi.json' assert { type: 'json' };
+import AuditLogABI from './AuditLog.abi.json' assert { type: 'json' };
+import ChallengeManagerABI from './ChallengeManager.abi.json' assert { type: 'json' };
+import ClaimVaultABI from './ClaimVault.abi.json' assert { type: 'json' };
+import ClaimVaultZKABI from './ClaimVaultZK.abi.json' assert { type: 'json' };
+import FamilyMemberSBTABI from './FamilyMemberSBT.abi.json' assert { type: 'json' };
+import GovernanceABI from './Governance.abi.json' assert { type: 'json' };
+import Groth16VerifierABI from './Groth16Verifier.abi.json' assert { type: 'json' };
+import OracleManagerABI from './OracleManager.abi.json' assert { type: 'json' };
+import PaymentChannelABI from './PaymentChannel.abi.json' assert { type: 'json' };
+import PlatformRoleRegistryABI from './PlatformRoleRegistry.abi.json' assert { type: 'json' };
+import SBTABI from './SBT.abi.json' assert { type: 'json' };
+import TreasuryABI from './Treasury.abi.json' assert { type: 'json' };
 
 /**
  * 所有合约 ABI 导出对象
@@ -53,6 +56,11 @@ export const ABIS = {
    */
   ArbitratorPool: ArbitratorPoolABI,
   /**
+   * AuditLog 合约 ABI
+   * 合约 ABI
+   */
+  AuditLog: AuditLogABI,
+  /**
    * ChallengeManager 合约 ABI
    * 挑战管理器：身份挑战与仲裁
    */
@@ -67,6 +75,11 @@ export const ABIS = {
    * ZK 空投申领入口：合约层二次校验金额 + Nullifier 防重放
    */
   ClaimVaultZK: ClaimVaultZKABI,
+  /**
+   * FamilyMemberSBT 合约 ABI
+   * 合约 ABI
+   */
+  FamilyMemberSBT: FamilyMemberSBTABI,
   /**
    * Governance 合约 ABI
    * DAO 治理合约：加权投票 + 时间锁执行
@@ -97,6 +110,11 @@ export const ABIS = {
    * ERC-5192 灵魂绑定代币：不可转让的链上信用凭证
    */
   SBT: SBTABI,
+  /**
+   * Treasury 合约 ABI
+   * 合约 ABI
+   */
+  Treasury: TreasuryABI,
 };
 
 /**
@@ -105,15 +123,18 @@ export const ABIS = {
 export { AnonymousClaimABI };
 export { AntiSybilClaimZKABI };
 export { ArbitratorPoolABI };
+export { AuditLogABI };
 export { ChallengeManagerABI };
 export { ClaimVaultABI };
 export { ClaimVaultZKABI };
+export { FamilyMemberSBTABI };
 export { GovernanceABI };
 export { Groth16VerifierABI };
 export { OracleManagerABI };
 export { PaymentChannelABI };
 export { PlatformRoleRegistryABI };
 export { SBTABI };
+export { TreasuryABI };
 
 /**
  * 获取合约 ABI 的工具函数

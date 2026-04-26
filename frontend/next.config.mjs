@@ -11,9 +11,21 @@ const backendOrigin = (
 ).replace(/\/$/, "");
 
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: process.env.NODE_ENV === 'production',
+
+  transpilePackages: ['@trustaid/wallet-sdk'],
+
+  serverExternalPackages: ['snarkjs', 'circomlibjs', 'poseidon-lite'],
+
   experimental: {
-    externalDir: true
+    externalDir: true,
+    optimizePackageImports: [
+      'viem',
+      'ethers',
+      'framer-motion',
+      '@tanstack/react-query',
+      'circomlibjs',
+    ],
   },
 
   // 将服务器端环境变量暴露给浏览器端
@@ -54,15 +66,15 @@ const nextConfig = {
     // 配置路径别名 @/
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': __dirname,
-      '@components': path.join(__dirname, 'components'),
-      '@hooks': path.join(__dirname, 'hooks'),
-      '@lib': path.join(__dirname, 'lib'),
-      '@store': path.join(__dirname, 'store'),
-      '@utils': path.join(__dirname, 'utils'),
-      '@types': path.join(__dirname, 'types'),
-      '@workers': path.join(__dirname, 'workers'),
-      '@app': path.join(__dirname, 'app'),
+      '@': path.join(__dirname, 'src'),
+      '@components': path.join(__dirname, 'src/components'),
+      '@hooks': path.join(__dirname, 'src/hooks'),
+      '@lib': path.join(__dirname, 'src/lib'),
+      '@store': path.join(__dirname, 'src/store'),
+      '@utils': path.join(__dirname, 'src/utils'),
+      '@types': path.join(__dirname, 'src/types'),
+      '@workers': path.join(__dirname, 'src/workers'),
+      '@app': path.join(__dirname, 'src/app'),
     };
 
     if (dev && !isServer) {
@@ -93,8 +105,8 @@ const nextConfig = {
       {
         source: "/(.*)",
         headers: [
-          { key: "Cross-Origin-Opener-Policy",   value: "same-origin" },
-          { key: "Cross-Origin-Embedder-Policy",  value: "require-corp" },
+          { key: "Cross-Origin-Opener-Policy",  value: "same-origin" },
+          { key: "Cross-Origin-Embedder-Policy", value: "require-corp" },
         ],
       },
     ];

@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { normalizeGroth16ProofForSolidity, validateAnonymousClaimSignals } from "../src/services/anonymousClaim.service.js";
+﻿import { describe, it, expect } from "vitest";
+import { normalizeGroth16ProofForSolidity, validateAnonymousClaimSignals } from "../src/services/claim/anonymousClaim.service.js";
 
 describe("anonymousClaim.service", () => {
     it("normalizeGroth16ProofForSolidity accepts pi_* from snarkjs", () => {

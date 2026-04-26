@@ -126,6 +126,26 @@ export function requireRole(roleId) {
 }
 
 /**
+ * 多角色放行：req.auth.roles 含 roles 中任一角色则通过（逻辑 OR）。
+ * @param {string[]} roles 允许的角色数组
+ */
+export function requireAnyRole(roles) {
+  return (req, res, next) => {
+    const userRoles = req.auth?.roles ?? [];
+    const hasAny = roles.some((r) => userRoles.includes(r));
+    if (!hasAny) {
+      return res.status(403).json({
+        code: 4003,
+        error: "权限不足",
+        required: roles,
+        current: userRoles.length > 0 ? userRoles : "anonymous",
+      });
+    }
+    next();
+  };
+}
+
+/**
  * 软认证：有合法 Bearer Token 则解析并挂到 req.auth，否则静默透传。
  * 用于不强制登录但需感知角色的端点（如 AI 聊天）。
  */

@@ -93,6 +93,14 @@ export const config = {
   platformRoleRegistryAddress: process.env.PLATFORM_ROLE_REGISTRY_ADDRESS || "",
   /** 仲裁员池，用于解析 arbitrator 角色 */
   arbitratorPoolAddress: process.env.ARBITRATOR_POOL_ADDRESS || "",
+  /** 国库合约地址（资金流分析） */
+  treasuryAddress: process.env.TREASURY_ADDRESS || "",
+  /** 审计日志合约地址（链上日志） */
+  auditLogAddress: process.env.AUDIT_LOG_ADDRESS || "",
+  /** 挑战管理器地址（仲裁奖励读取） */
+  challengeManagerAddress: process.env.CHALLENGE_MANAGER_ADDRESS || "",
+  /** 预言机管理器地址（质押读取） */
+  oracleManagerAddress: process.env.ORACLE_MANAGER_ADDRESS || "",
   /**
    * 角色来源：memory | chain | chain_with_memory_fallback
    * @see docs/链上角色与权限.md

@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll } from "vitest";
+﻿import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import app from "../src/server.js";
 import { signJwt } from "../src/auth/jwt.js";
 import { config } from "../src/config.js";
-import { computeIdentityCommitment, computeMerkleLeaf } from "../src/services/poseidon.service.js";
+import { computeIdentityCommitment, computeMerkleLeaf } from "../src/services/identity/poseidon.service.js";
 
 const ORACLE_ADDRESS = "0x1111222233334444555566667777888899990000";
 const USER_ADDRESS = "0xaaaa222233334444555566667777888899990000";

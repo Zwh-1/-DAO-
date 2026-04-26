@@ -16,9 +16,10 @@
 import cors from "cors";
 import express from "express";
 import { verifyMessage } from "ethers";
+import path from "path";
 
 import { errorHandler, asyncHandler } from "./utils/errors.js";
-import { info, warn } from "./utils/logger.js";
+import { warn, error as logError, info, httpLog } from "./utils/logger.js";
 import { isAddressBanned, isSystemPaused } from "./storage.js";
 
 import {
@@ -42,25 +43,27 @@ import {
   resolveRolesFromChain,
   mergeRolesFromChainAndMemory,
 } from "./chain/roles.js";
+import { autoMintSBT } from "./services/identity/identity.service.js";
 
 // 导入路由模块
-import identityRoutes from "./routes/identity.routes.js";
-import anonymousClaimRoutes from "./routes/anonymousClaim.routes.js";
-import channelRoutes from "./routes/channel.routes.js";
-import reputationRoutes from "./routes/reputation.routes.js";
-import multiSigRoutes from "./routes/multiSig.routes.js";
-import claimRoutes from "./routes/claim.routes.js";
-import oracleRoutes from "./routes/oracle.routes.js";
-import guardianRoutes from "./routes/guardian.routes.js";
-import governanceRoutes from "./routes/governance.routes.js";
-import aiRoutes from "./routes/ai.routes.js";
-import securityRoutes from "./routes/security.routes.js";
-import memberRoutes from "./routes/member.routes.js";
-import explorerRoutes from "./routes/explorer.routes.js";
-import zkRoutes from "./routes/zk.routes.js";
-import challengeRoutes from "./routes/challenge.routes.js";
-import { V1Mount, V1Routes, ROOT_HEALTH_PATH } from "./constants/v1Mounts.js";
-import { startActivityWatcher, recordPlatformActivity } from "./services/activityWatcher.service.js";
+import identityRoutes from "./routes/identity/identity.routes.js";
+import anonymousClaimRoutes from "./routes/claim/anonymousClaim.routes.js";
+import channelRoutes from "./routes/channel/channel.routes.js";
+import reputationRoutes from "./routes/member/reputation.routes.js";
+import multiSigRoutes from "./routes/channel/multiSig.routes.js";
+import claimRoutes from "./routes/claim/claim.routes.js";
+import oracleRoutes from "./routes/governance/oracle.routes.js";
+import guardianRoutes from "./routes/governance/guardian.routes.js";
+import governanceRoutes from "./routes/governance/governance.routes.js";
+import aiRoutes from "./routes/ai/ai.routes.js";
+import securityRoutes from "./routes/security/security.routes.js";
+import memberRoutes from "./routes/member/member.routes.js";
+import explorerRoutes from "./routes/explorer/explorer.routes.js";
+import zkRoutes from "./routes/identity/zk.routes.js";
+import challengeRoutes from "./routes/claim/challenge.routes.js";
+import auditRoutes from "./routes/audit/audit.routes.js";
+import { V1Mount, V1Routes, ROOT_HEALTH_PATH } from "./config/v1Mounts.js";
+import { startActivityWatcher, recordPlatformActivity } from "./services/member/activityWatcher.service.js";
 
 const app = express();
 const port = config.port;
@@ -72,6 +75,13 @@ const corsOrigins = process.env.CORS_ORIGINS?.split(",").map(s => s.trim()).filt
 app.use(cors(corsOrigins?.length ? { origin: corsOrigins, credentials: true } : undefined));
 app.use(express.json({ limit: "1mb" }));
 
+// 静态文件服务：上传的证据文件
+const uploadsDir = path.join(process.cwd(), "uploads");
+app.use("/uploads", express.static(uploadsDir, {
+  maxAge: "1d", // 缓存 1 天
+  fallthrough: false, // 文件不存在时返回 404
+}));
+
 // ── 请求日志（非生产环境打印精简摘要，生产环境可由反向代理/侧车采集） ────────
 app.use((req, _res, next) => {
   const start = Date.now();
@@ -79,11 +89,10 @@ app.use((req, _res, next) => {
   _res.end = function (...args) {
     const duration = Date.now() - start;
     const status = _res.statusCode;
-    if (duration > 2000 || status >= 500) {
-      warn(`[http] ${req.method} ${req.originalUrl} ${status} ${duration}ms`);
-    } else if (config.nodeEnv !== "production") {
-      info(`[http] ${req.method} ${req.originalUrl} ${status} ${duration}ms`);
-    }
+    httpLog(req.method, req.originalUrl, status, duration, {
+      ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress,
+      uid: req.auth?.address,
+    });
     originalEnd.apply(this, args);
   };
   next();
@@ -122,6 +131,7 @@ app.use(V1Mount.security, securityRoutes);
 app.use(V1Mount.member, memberRoutes);
 app.use(V1Mount.challenge, challengeRoutes);
 app.use(V1Mount.explorer, explorerRoutes);
+app.use(V1Mount.audit, auditRoutes);
 app.use(V1Mount.zk, zkRoutes);
 
 // ── 全局端点（不属于特定模块） ─────────────────────────────────────────────
@@ -304,6 +314,7 @@ app.post(V1Routes.auth.verify, async (req, res) => {
   const exp = Date.now() + 24 * 3600 * 1000;
   
   getOrCreateMemberProfile(address);
+  autoMintSBT(address).catch(err => warn(`[auth] autoMintSBT: ${err?.message}`));
   let roles = getMemberRoles(address);
   const src = getRolesSource();
 
@@ -317,7 +328,7 @@ app.post(V1Routes.auth.verify, async (req, res) => {
       }
     }
   } catch (err) {
-    console.warn("[auth/verify] resolveRolesFromChain:", err?.message || err);
+    warn('[auth/verify] resolveRolesFromChain', { error: err?.message || String(err) }, 'auth');
     if (src === "chain") {
       return res.status(503).json({
         code: 5031,
@@ -356,7 +367,7 @@ app.post(V1Routes.auth.refreshRoles, requireAuth, async (req, res) => {
       }
     }
   } catch (err) {
-    console.warn("[auth/refresh-roles] resolveRolesFromChain:", err?.message || err);
+    warn('[auth/refresh-roles] resolveRolesFromChain', { error: err?.message || String(err) }, 'auth');
     if (src === "chain") {
       return res.status(503).json({
         code: 5031,
@@ -443,21 +454,21 @@ if (process.env.NODE_ENV !== "test") {
     try {
       validateConfig();
     } catch (err) {
-      console.error("[trustaid-backend] 配置校验失败，进程退出:", err?.message || err);
+      logError('[trustaid-backend] 配置校验失败，进程退出', { error: err?.message || String(err) });
       process.exit(1);
     }
   }
   const server = app.listen(port, () => {
-    console.log(`[trustaid-backend] listening on http://localhost:${port}`);
+    info(`[trustaid-backend] listening on http://localhost:${port}`);
     const ac = getAnonymousClaimEnvSummary();
-    console.log(
+    info(
       `[trustaid-backend] anonymous_claim: 链上只读=${ac.chainReadOk} 中继代播=${ac.relayOk}（见 docs/ZK申领端到端.md）`
     );
-    console.log(
+    info(
       `[trustaid-backend] database: ${config.databaseUrl?.trim() ? "DATABASE_URL 已配置 (mysql2)" : "未配置（Nullifier/claim 双写走内存兜底）"}`
     );
     if (corsOrigins?.length) {
-      console.log(`[trustaid-backend] CORS origins: ${corsOrigins.join(", ")}`);
+      info(`[trustaid-backend] CORS origins: ${corsOrigins.join(", ")}`);
     }
     // 启动链上事件同步
     startActivityWatcher();
@@ -465,24 +476,24 @@ if (process.env.NODE_ENV !== "test") {
 
   // ── 优雅退出（SIGTERM / SIGINT） ──────────────────────────────────────────
   function gracefulShutdown(signal) {
-    console.log(`[trustaid-backend] 收到 ${signal}，开始优雅退出...`);
+    info(`[trustaid-backend] 收到 ${signal}，开始优雅退出...`);
     server.close(async () => {
       // 关闭数据库连接池
       try {
         const p = getPool();
         if (p) {
           await p.end();
-          console.log("[trustaid-backend] 数据库连接池已关闭");
+          info('[trustaid-backend] 数据库连接池已关闭');
         }
       } catch (e) {
-        console.warn("[trustaid-backend] 关闭数据库连接池失败:", e.message);
+        warn('[trustaid-backend] 关闭数据库连接池失败', { error: e.message });
       }
-      console.log("[trustaid-backend] 已退出");
+      info('[trustaid-backend] 已退出');
       process.exit(0);
     });
     // 超时强制退出
     setTimeout(() => {
-      console.error("[trustaid-backend] 优雅退出超时，强制退出");
+      logError('[trustaid-backend] 优雅退出超时，强制退出');
       process.exit(1);
     }, 10_000);
   }

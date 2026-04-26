@@ -222,13 +222,14 @@ export async function insertClaimDb(row) {
     // MySQL 使用 ON DUPLICATE KEY UPDATE 替代 PostgreSQL 的 ON CONFLICT DO NOTHING
     await p.execute(
       `INSERT INTO claim_records
-         (claim_id, nullifier_hash, evidence_cid, claimant_address, amount, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+         (claim_id, nullifier_hash, evidence_cid, policy_id, claimant_address, amount, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE claim_id = claim_id`,
       [
         row.claimId,
         row.nullifierHash,
         row.evidenceCid,
+        row.policyId || "",
         row.address,
         row.amount,
         row.status || "PENDING_REVIEW",

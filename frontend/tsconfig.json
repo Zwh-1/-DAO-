@@ -17,15 +17,15 @@
     "plugins": [{ "name": "next" }],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@/components/*": ["components/*"],
-      "@/hooks/*": ["hooks/*"],
-      "@/lib/*": ["lib/*"],
-      "@/store/*": ["store/*"],
-      "@/utils/*": ["utils/*"],
-      "@/types/*": ["types/*"],
-      "@/workers/*": ["workers/*"],
-      "@/app/*": ["app/*"]
+      "@/*":            ["./src/*"],
+      "@/components/*": ["src/components/*"],
+      "@/hooks/*":      ["src/hooks/*"],
+      "@/lib/*":        ["src/lib/*"],
+      "@/store/*":      ["src/store/*"],
+      "@/utils/*":      ["src/utils/*"],
+      "@/types/*":      ["src/types/*"],
+      "@/workers/*":    ["src/workers/*"],
+      "@/app/*":        ["src/app/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
